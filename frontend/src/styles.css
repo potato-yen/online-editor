@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* custom scrollbars */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #525252;
+  border-radius: 9999px;
+}
+
+/* printing hooks for better PDF pagination */
+@media print {
+  .page-break-before {
+    page-break-before: always;
+  }
+  .avoid-break-inside {
+    page-break-inside: avoid;
+  }
+
+  body {
+    color: #000;
+    background: #fff;
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+
+  table {
+    page-break-inside: avoid;
+  }
+}
+
+/* better table borders in dark mode preview */
+.prose :where(table):not(:where([class~=not-prose] *)) {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.25em;
+  margin-bottom: 1.25em;
+}
+.prose :where(th, td):not(:where([class~=not-prose] *)) {
+  border: 1px solid rgb(82 82 82 / 1);
+  padding: 0.5rem 0.75rem;
+}
+.prose :where(thead th):not(:where([class~=not-prose] *)) {
+  background-color: rgb(23 23 23 / 1);
+  color: rgb(250 250 250 / 1);
+  font-weight: 600;
+}
