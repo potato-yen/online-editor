@@ -8,6 +8,23 @@
   - Node.js + Express
   - 提供 `/compile-latex` API
   - 呼叫系統上的 `tectonic`(或 `pdflatex`) 來把 .tex 轉成 PDF
+ 
+
+**若系統上沒有 `tectonic`請使用以下指令**
+##### Unix(include MacOs)
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net |sh
+```
+##### MacOS(brew)
+```bash
+$ brew install tectonic
+```
+##### Windows(Powershell)
+```ps
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+iex ((New-Object System.Net.WebClient).DownloadString('https://drop-ps1.fullyjustified.net'))
+```
+
 
 ## 啟動流程（開發狀態）
 
