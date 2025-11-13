@@ -67,5 +67,4 @@ Vite 預設在 http://localhost:5173
 ## 注意事項
 - 這個後端在現在的型態下**不適合直接丟到公開網路**。  
   要上線必須把每次編譯放進 sandbox (例如 Docker 容器) 並做資源限制，避免惡意 .tex 造成安全風險或當機。
-# online-editor
-# online-editor
+
