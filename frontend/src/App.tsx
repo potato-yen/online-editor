@@ -6,6 +6,7 @@
 // 4. Export PDF using html2pdf.js (front-end only)
 // 5. LaTeX mode: send source to backend, receive compiled PDF blob, preview in iframe
 // 6. Dark UI with Tailwind + typography
+// 7. (New) Import .md/.tex file
 
 import React, { useState, useEffect, useRef } from 'react'
 import { renderMarkdownToHTML } from './markdownRenderer'
@@ -70,6 +71,9 @@ export default function App() {
   // Preview DOM ref (for PDF export of markdown view)
   const previewRef = useRef<HTMLDivElement | null>(null)
 
+  // (NEW) Ref for the hidden file input
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
   // Export source file (.md / .tex)
   function handleExportSource() {
     const blob = new Blob([text], {
@@ -127,6 +131,55 @@ export default function App() {
       setCompileError(err.message || String(err))
     } finally {
       setIsCompiling(false)
+    }
+  }
+
+  // (NEW) Trigger file input click
+  function handleImportClick() {
+    fileInputRef.current?.click();
+  }
+
+  // (NEW) Handle file import, read content, and set mode
+  function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileName = file.name;
+    const reader = new FileReader();
+
+    reader.onload = (evt) => {
+      const fileContent = evt.target?.result as string;
+      if (fileContent === null) {
+        console.error("Failed to read file: content is null");
+        setCompileError("讀取檔案失敗"); // Show error
+        return;
+      }
+
+      // Set editor text
+      setText(fileContent);
+
+      // Check extension and set mode
+      if (fileName.endsWith('.tex')) {
+        setMode('latex');
+      } else if (fileName.endsWith('.md') || fileName.endsWith('.txt')) {
+        // Default to markdown for .md and .txt
+        setMode('markdown');
+      }
+      
+      // Clear any previous errors
+      setCompileError('');
+    };
+    
+    reader.onerror = (err) => {
+      console.error("Failed to read file:", err);
+      setCompileError("讀取檔案失敗: " + String(err));
+    };
+
+    reader.readAsText(file);
+
+    // Reset the input value so selecting the same file again triggers onChange
+    if (e.target) {
+      e.target.value = '';
     }
   }
 
@@ -188,6 +241,23 @@ export default function App() {
         </div>
 
         <div className="flex-1" />
+        
+        {/* (NEW) Import Button */}
+        <button
+          onClick={handleImportClick}
+          className="px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-800 hover:bg-neutral-700 border border-neutral-600"
+        >
+          匯入檔案
+        </button>
+
+        {/* (NEW) Hidden File Input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileImport}
+          accept=".md,.tex,.txt" // 接受這三種類型
+          style={{ display: 'none' }}
+        />
 
         {mode === 'latex' ? (
           <button
@@ -263,7 +333,8 @@ export default function App() {
             <div className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-track-neutral-900 scrollbar-thumb-neutral-600">
               {compileError ? (
                 <div className="text-red-400 text-sm whitespace-pre-wrap">
-                  編譯失敗：{compileError}
+                  {/* (MODIFIED) 讓讀檔錯誤也能顯示在這裡 */}
+                  {compileError.startsWith('讀取檔案失敗') ? compileError : `編譯失敗：${compileError}`}
                 </div>
               ) : pdfURL ? (
                 <iframe
