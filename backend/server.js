@@ -40,7 +40,7 @@ const { execFile } = require('child_process');
 const LATEX_CMD = 'tectonic';
 const LATEX_ARGS = [
   'main.tex',
-  'outfmt',
+  '--outfmt',
   'pdf'
 ];
 
