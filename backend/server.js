@@ -39,7 +39,9 @@ const { execFile } = require('child_process');
 // ---- 用 tectonic 的版本 ----
 const LATEX_CMD = 'tectonic';
 const LATEX_ARGS = [
-  'main.tex'
+  'main.tex',
+  'outfmt',
+  'pdf'
 ];
 
 // ---- 如果你想用 pdflatex，請改成這樣： ----
