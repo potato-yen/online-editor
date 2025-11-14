@@ -1,0 +1,172 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, amsthm, mathtools}
+\usepackage{physics}
+\usepackage{geometry}
+\usepackage{tikz}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{bm}
+\geometry{a4paper, margin=1in}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+
+\begin{document}
+
+\section{Extremely Long and Complex LaTeX Example}
+
+We study a function $f:\mathbb{R}^n \to \mathbb{R}$ that is twice differentiable with continuous derivatives.  
+Let the gradient and Hessian be denoted by
+\[
+\nabla f(x), \qquad H(x) = \nabla^2 f(x).
+\]
+
+The Taylor expansion up to third order around $x_0$ is
+\begin{align}
+f(x) &= f(x_0) + \nabla f(x_0)^\top (x-x_0) 
+    + \frac{1}{2}(x-x_0)^\top H(x_0)(x-x_0) \nonumber \\
+    &\quad + \frac{1}{6} \sum_{i,j,k=1}^n 
+        \frac{\partial^3 f}{\partial x_i \partial x_j \partial x_k}(x_0)
+        (x_i-x_{0,i})(x_j-x_{0,j})(x_k-x_{0,k}) + O(\|x-x_0\|^4).
+\end{align}
+
+\subsection{A Very Long Theorem}
+
+\begin{theorem}[Generalized Spectral Decomposition]
+Let $A$ be a real symmetric matrix in $\mathbb{R}^{n\times n}$.  
+Then there exists an orthogonal matrix $Q$ and a diagonal matrix $\Lambda$ such that
+\[
+A = Q \Lambda Q^\top.
+\]
+Moreover, if $A$ is positive definite, then for any vector $x$,
+\[
+x^\top A x = \sum_{i=1}^n \lambda_i (q_i^\top x)^2,
+\]
+where $\lambda_i$ are eigenvalues and $q_i$ eigenvectors.
+\end{theorem}
+
+\begin{proof}
+(The classical long proof omitted.) For illustration, note that real symmetric matrices are diagonalizable by orthonormal eigenvectors.  
+Thus $A q_i = \lambda_i q_i$ for each $i$, and arranging these as columns of $Q$ yields $A = Q \Lambda Q^\top$.
+\end{proof}
+
+\subsection{Long Derivation: Moore--Penrose Pseudoinverse}
+
+For a non-square matrix $A\in\mathbb{R}^{m\times n}$, the pseudoinverse is
+\[
+A^+ = (A^\top A)^{-1} A^\top \quad \text{if $A$ has full column rank}.
+\]
+
+More generally, with SVD:
+\[
+A = U\Sigma V^\top, \qquad 
+A^+ = V \Sigma^+ U^\top.
+\]
+
+\subsection{A Massive Matrix Example}
+
+\[
+M = 
+\begin{pmatrix}
+1 & 2 & 3 & 4 & 5 \\
+0 & 1 & -1 & 2 & -3 \\
+4 & 0 & 2 & -1 & 7 \\
+1 & -2 & 3 & 0 & 0 \\
+-3 & 5 & 1 & 1 & 2
+\end{pmatrix}.
+\]
+
+\subsection{A Giant Multiline Equation Spanning Pages}
+
+\begin{align}
+F(t) &= \int_{0}^{t} 
+\left[
+    x^3 e^{-x^2}
+    + \frac{\sin(x)}{1+x^2}
+    + \ln(1+x)
+    + \sum_{k=1}^{\infty}
+      \frac{(-1)^k x^{2k}}{k!}
+\right]\dd{x} \nonumber \\
+&\quad 
++ \lim_{n\to\infty} 
+\left(
+    \sum_{i=1}^{n}
+    \frac{(-1)^i}{i}
+    \int_0^1 u^{i-1}(1-u)^{i-1}\dd{u}
+\right)
++ \int_{-\infty}^{\infty} e^{-x^4/2}\dd{x}. 
+\end{align}
+
+\subsection{A Three-Dimensional Integral}
+
+\[
+I = \iiint_{x^2 + y^2 + z^2 \le 1} 
+\frac{x^2 + y^2 + z^2}{1 + xyz}
+\dd{x}\dd{y}\dd{z}.
+\]
+
+\subsection{Piecewise and Limit Mixture}
+
+\[
+h(x)=
+\begin{cases}
+x^2\sin(1/x) + x^3, & x\neq 0, \\
+\displaystyle \lim_{t\to 0} t^2\sin(1/t), & x=0.
+\end{cases}
+\]
+
+\subsection{An Inner Product Space Example}
+
+For $f,g\in L^2[0,1]$, define
+\[
+\langle f,g\rangle = \int_0^1 f(x)g(x)\dd{x}.
+\]
+
+Then the Fourier series expansion of a periodic function $f$ is
+\[
+f(x)\sim \frac{a_0}{2} + \sum_{n=1}^{\infty}(a_n\cos nx + b_n\sin nx).
+\]
+
+\subsection{TikZ Example}
+
+\begin{center}
+\begin{tikzpicture}[scale=1.1]
+\draw[->] (-0.5,0) -- (3.5,0) node[right]{$x$};
+\draw[->] (0,-0.5) -- (0,2.5) node[above]{$y$};
+\draw[thick, blue] (0,0) .. controls (1,2) .. (3,1);
+\node at (1.5,2) {$y=f(x)$};
+\end{tikzpicture}
+\end{center}
+
+\subsection{A Long Table for Layout Stress Testing}
+
+\begin{longtable}{|c|c|c|c|}
+\hline
+$n$ & $a_n$ & $b_n$ & Remark \\
+\hline
+1 & $\frac{1}{2}$ & $0$ & base term\\
+2 & $\frac{1}{4}$ & $-\frac{1}{3}$ & oscillatory\\
+3 & $0$ & $\frac{1}{5}$ & slow decay\\
+4 & $-\frac{1}{8}$ & $0$ & symmetry\\
+5 & $\frac{1}{16}$ & $-\frac{1}{7}$ & etc.\\
+\hline
+\end{longtable}
+
+\subsection{Another Long Multi-step Derivation}
+
+\begin{align}
+R(x) 
+&= \sum_{n=1}^\infty \frac{(-1)^{n-1} x^n}{n}
+    + \int_0^x t^2 e^{-t} \dd{t}
+    + \int_{0}^{\infty} \frac{\cos(tx)}{1+t^4}\dd{t} \\
+&= \ln(1+x)
+    - (x^2+2x+2)e^{-x}
+    + \frac{\pi}{\sqrt{2}} e^{-x/\sqrt{2}}
+      \left[
+        \sin\left(\frac{x}{\sqrt{2}}\right)
+        + 
+        \cos\left(\frac{x}{\sqrt{2}}\right)
+      \right].
+\end{align}
+
+\end{document}

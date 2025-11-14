@@ -50,8 +50,112 @@
   border: 1px solid rgb(82 82 82 / 1);
   padding: 0.5rem 0.75rem;
 }
-.prose :where(thead th):not(:where([class~=not-prose] *)) {
-  background-color: rgb(23 23 23 / 1);
-  color: rgb(250 250 250 / 1);
+/* 表格頭列：改為白底黑字 */
+.prose :where(thead th):not(:where([class~=not-prose] *)),
+.pdf-export thead th {
+  background-color: #ffffff !important;
+  color: #111827 !important;
   font-weight: 600;
+}
+
+/* ===== Markdown 匯出 PDF：淺色主題＋分頁控制 ===== */
+
+/* 匯出 PDF 專用容器 */
+.pdf-export {
+  background: #ffffff !important;
+  color: #111827 !important;
+  padding: 24px;
+  max-width: 800px;
+  box-sizing: border-box;
+}
+
+/* 標題、段落、列表：黑字 */
+.pdf-export h1,
+.pdf-export h2,
+.pdf-export h3,
+.pdf-export h4,
+.pdf-export h5,
+.pdf-export h6,
+.pdf-export p,
+.pdf-export li {
+  color: #111827 !important;
+}
+
+/* PDF 中的 code block（```...```）統一樣式 */
+.pdf-export pre {
+  background-color: #111827 !important;
+  border-radius: 0.375rem;
+  overflow-x: auto;
+}
+.pdf-export pre > code[class*="language-"] {
+  display: block;
+  padding: 0.75rem 1rem;
+  background: transparent !important;
+  color: #f9fafb !important;
+}
+
+/* PDF 中 bash 額外調成黑底綠字（如果不需要可以刪掉這兩條） */
+.pdf-export pre > code.language-bash {
+  color: #e5f5c0 !important;
+}
+.pdf-export pre:has(> code.language-bash) {
+  background-color: #000000 !important;
+}
+
+/* PDF 表格樣式 */
+.pdf-export table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pdf-export th,
+.pdf-export td {
+  border: 1px solid #d4d4d8;
+  padding: 0.5rem 0.75rem;
+  color: #111827 !important;           /* ⬅ 強制黑字 */
+}
+
+/* 表格裡的所有內層元素也跟著黑字，不要再變成淺灰 */
+.pdf-export th *,
+.pdf-export td * {
+  color: inherit !important;
+}
+
+/* PDF 分頁時儘量避免切開這些元素 */
+.pdf-export pre,
+.pdf-export blockquote,
+.pdf-export table,
+.pdf-export .katex-display,
+.pdf-export ul,
+.pdf-export ol,
+.pdf-export li {
+  page-break-inside: avoid;
+  break-inside: avoid-page;
+}
+
+/* ===== 預覽區的 code block：只有真正的區塊黑底，inline code 不動 ===== */
+
+/* 只選擇像 ```lang 產生的 <pre><code class="language-xxx"> */
+.prose :not(pre) > code {
+  background-color: transparent !important;
+  color: inherit !important;
+  padding: 0.15rem 0.25rem;
+  border-radius: 0.25rem;
+  box-shadow: none !important;
+}
+
+/* 外層 pre 一起配合，避免邊緣留白 */
+.prose pre:has(> code[class*="language-"]) {
+  background-color: #111827;
+  border-radius: 0.5rem;
+  padding: 0;
+  overflow-x: auto;
+}
+
+/* 預覽中的 bash block：黑底綠字 */
+.prose pre > code.language-bash {
+  color: #e5f5c0;
+}
+.prose pre:has(> code.language-bash) {
+  background-color: #000000;
 }

@@ -69,7 +69,7 @@ export default function App() {
   }, [text, mode])
 
   // Preview DOM ref (for PDF export of markdown view)
-  const previewRef = useRef<HTMLDivElement | null>(null)
+  const previewRef = useRef(null)
 
   // (NEW) Ref for the hidden file input
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -92,19 +92,63 @@ export default function App() {
   function handleExportPDF() {
     if (!previewRef.current) return
 
+    const el = previewRef.current as HTMLElement
+
+    // 1. 記住原本的 class 和 inline style
+    const originalClassName = el.className
+    const originalStyle = el.getAttribute('style')
+
+    // 2. 暫時改成適合匯出 PDF 的樣子
+    //    - 去掉深色主題相關 class
+    //    - 加上 pdf-export
+    el.className = originalClassName
+      .replace('prose-invert', '')
+      .replace('bg-neutral-900', '')
+      .replace('text-neutral-100', '')
+      .replace('overflow-auto', '') + ' pdf-export'
+
+    // 讓內容可以長高，不被捲軸限制
+    el.style.overflow = 'visible'
+    el.style.maxHeight = 'none'
+    el.style.backgroundColor = '#ffffff'
+    el.style.color = '#111827'
+
     const opt = {
-      margin:       10,
-      filename:     'document.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    }
+      margin: 10,
+      filename: 'document.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff', // 強制白底
+      },
+      jsPDF: {
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait',
+      },
+      pagebreak: {
+        mode: ['css', 'legacy'],
+        avoid: ['pre', 'code', 'table', 'blockquote', 'li'],
+      },
+    } as const
 
     html2pdf()
-      .from(previewRef.current)
       .set(opt)
+      .from(el)
       .save()
+      .finally(() => {
+        // 3. 匯出完成後，把 class 和 style 還原
+        el.className = originalClassName
+        if (originalStyle !== null) {
+          el.setAttribute('style', originalStyle)
+        } else {
+          el.removeAttribute('style')
+        }
+      })
   }
+
+
 
   // Call backend to compile LaTeX -> PDF, store result in blob URL (pdfURL)
   async function handleCompileLatex() {
