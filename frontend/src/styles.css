@@ -190,3 +190,15 @@ body {
   margin: 0;
   overflow: hidden;        /* 關掉整個頁面的滾動 */
 }
+.prose kbd {
+  /* 移除預設的邊框和陰影 */
+  border: none;
+  box-shadow: none;
+  background-color: #3f3f46; /* neutral-700, 深色背景 */
+  color: #d4d4d4; /* neutral-300, 淺色文字 */
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-family: inherit; /* 讓字體跟隨 Prose 設定，而不是 Monospace */
+  white-space: nowrap;
+}
