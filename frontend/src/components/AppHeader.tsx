@@ -1,71 +1,99 @@
 // src/components/AppHeader.tsx
-// (NEW) - Header component
+import { useNavigate } from 'react-router-dom'
+import type { Mode } from '../App'
 
-import React from 'react'
-import { Mode } from '../App' // Import the type
-import ModeToggle from './ModeToggle'
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
-interface Props {
+type Props = {
   mode: Mode
   isCompiling: boolean
-  onSetMode: (m: Mode) => void
+  saveStatus?: SaveStatus
   onImportClick: () => void
   onCompileLatex: () => void
   onExportSource: () => void
   onExportPDF: () => void
+  onManualSave?: () => void
+  onSetMode?: (m: Mode) => void // 現在沒用到，但先保留
 }
 
 export default function AppHeader({
   mode,
   isCompiling,
-  onSetMode,
+  saveStatus = 'idle',
   onImportClick,
   onCompileLatex,
   onExportSource,
   onExportPDF,
+  onManualSave,
 }: Props) {
+  const navigate = useNavigate()
+
+  let saveText: string | null = null
+  if (saveStatus === 'saving') saveText = 'Saving…'
+  else if (saveStatus === 'saved') saveText = 'Saved'
+  else if (saveStatus === 'error') saveText = 'Save failed'
+
+  const baseBtn =
+    'text-xs px-3 py-1.5 rounded-full bg-neutral-100 text-neutral-900 border border-neutral-300 hover:bg-white hover:border-neutral-100'
+
+  const sourceLabel = mode === 'markdown' ? 'Export .md' : 'Export .tex'
+  const modeLabel = mode.toUpperCase()
+
   return (
-    <header className="flex flex-wrap items-center gap-4 px-4 py-3 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur-md">
-      <div className="flex items-center gap-2 text-neutral-300 text-sm">
-        <span className="font-medium text-neutral-100">Mode:</span>
-        <ModeToggle mode={mode} setMode={onSetMode} />
+    <div className="relative flex items-center px-4 py-3 border-b border-neutral-800 bg-neutral-950/60 backdrop-blur-sm">
+      {/* 左：返回專案列表 */}
+      <button
+        onClick={() => navigate('/projects')}
+        className="text-neutral-400 hover:text-neutral-200 text-lg px-2"
+      >
+        &lt;
+      </button>
+
+      {/* 中：模式 + 儲存狀態，置中 */}
+      <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
+        <div className="text-xs text-neutral-500 uppercase tracking-wide">
+          {modeLabel}
+        </div>
+        <div className="text-[10px] text-neutral-500 h-4">
+          {saveText}
+        </div>
       </div>
 
-      <div className="flex-1" />
-
-      {/* Import Button */}
-      <button
-        onClick={onImportClick}
-        className="px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-800 hover:bg-neutral-700 border border-neutral-600"
-      >
-        匯入檔案
-      </button>
-
-      {mode === 'latex' ? (
+      {/* 右：操作按鈕列 */}
+      <div className="ml-auto flex items-center gap-2">
         <button
-          onClick={onCompileLatex}
-          className="px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isCompiling}
+          onClick={onManualSave}
+          disabled={!onManualSave || saveStatus === 'saving'}
+          className={`${baseBtn} disabled:opacity-60 disabled:cursor-not-allowed`}
         >
-          {isCompiling ? '編譯中…' : '編譯並預覽 (.pdf)'}
+          Save
         </button>
-      ) : null}
 
-      <button
-        onClick={onExportSource}
-        className="px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-800 hover:bg-neutral-700 border border-neutral-600"
-      >
-        下載原始檔 ({mode === 'markdown' ? '.md' : '.tex'})
-      </button>
-
-      {mode === 'markdown' ? (
-        <button
-          onClick={onExportPDF}
-          className="px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-100 text-neutral-900 hover:bg-white border border-neutral-300"
-        >
-          匯出 PDF
+        <button onClick={onImportClick} className={baseBtn}>
+          Import
         </button>
-      ) : null}
-    </header>
+
+        {mode === 'latex' && (
+          <button
+            onClick={onCompileLatex}
+            disabled={isCompiling}
+            className={`${baseBtn} disabled:opacity-60 disabled:cursor-not-allowed`}
+          >
+            {isCompiling ? 'Compiling…' : 'Compile'}
+          </button>
+        )}
+
+        <button onClick={onExportSource} className={baseBtn}>
+          {sourceLabel}
+        </button>
+
+        {/* ✅ 只有 Markdown 模式才顯示 Export PDF */}
+        {mode === 'markdown' && (
+          <button onClick={onExportPDF} className={baseBtn}>
+            Export PDF
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
