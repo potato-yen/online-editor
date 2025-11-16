@@ -10,5 +10,7 @@ export interface ToolbarProps {
   onSmartBlock: (prefix: string, type: 'heading' | 'list' | 'quote' | 'task') => void;
   onSmartInline: (wrapChars: string, placeholder: string) => void;
   onRequestTable: () => void;
-  // onIndent: (action: 'indent' | 'outdent') => void; // (REMOVED)
+  // (NEW) 智慧型數學按鈕
+  onRequestSuperscript: () => void;
+  onRequestSubscript: () => void;
 }

@@ -1,22 +1,58 @@
 // src/components/LatexToolbar.tsx
 import React from 'react'
-import { ToolbarProps } from '../types' // 匯入共享型別
+import { ToolbarProps } from '../types'
+import Dropdown, { DropdownItem } from './Dropdown' // (NEW) 匯入 Dropdown
 
-// 這個元件只需要 ToolbarProps 裡的一部分
 type LatexToolbarProps = {
   onSimpleInsert: ToolbarProps['onSimpleInsert'];
 }
 
 export default function LatexToolbar({ onSimpleInsert }: LatexToolbarProps) {
-  const btnClass = "w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-800 hover:bg-neutral-700 border border-neutral-600"
-  const labelClass = "text-xs font-semibold text-neutral-400 mt-2"
-  
   return (
-    <div className="flex flex-col gap-2">
-      <span className={labelClass}>Math</span>
-      <button onClick={() => onSimpleInsert('$', '$', 'E = mc^2')} className={btnClass} title="LaTeX 行內公式">$...$</button>
-      <button onClick={() => onSimpleInsert('$$\n', '\n$$', 'f(x) = ...')} className={btnClass} title="LaTeX 區塊公式">$$...$$</button>
-      <button onClick={() => onSimpleInsert('$\\frac{', '}{denominator}$', 'numerator')} className={btnClass} title="LaTeX 分數">Fraction</button>
+    // (CHANGED) 改為 flex-row (水平排列)
+    <div className="flex flex-wrap items-center gap-2">
+      
+      {/* ========================================================== */}
+      {/* (UPGRADED) Math 數學按鈕 */}
+      {/* ========================================================== */}
+      <Dropdown label="Math">
+        <DropdownItem onClick={() => onSimpleInsert('$', '$', 'E = mc^2')}>Inline Math $...$</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$$\n', '\n$$', 'f(x) = ...')}>Block Math $$...$$</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('^{', '}', 'y')}>Superscript x^y</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('_{', '}', 'i')}>Subscript x_i</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\frac{', '}{denominator}$', 'numerator')}>Fraction</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\sqrt{', '}$', 'x')}>Square Root</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\sqrt[', ']{x}$', 'n')}>Nth Root</DropdownItem>
+      </Dropdown>
+
+      {/* ========================================================== */}
+      {/* (NEW) Symbols 符號按鈕 */}
+      {/* ========================================================== */}
+      <Dropdown label="Symbols">
+        <DropdownItem onClick={() => onSimpleInsert('$\\pi$', '', '')}>Pi (π)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\theta$', '', '')}>Theta (θ)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\alpha$', '', '')}>Alpha (α)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\beta$', '', '')}>Beta (β)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\Delta$', '', '')}>Delta (Δ)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\times$ ', '', '')}>Times (×)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\div$ ', '', '')}>Divide (÷)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\infty$', '', '')}>Infinity (∞)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\pm$ ', '', '')}>Plus/Minus (±)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\to$ ', '', '')}>Arrow (→)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\neq$ ', '', '')}>Not Equal (≠)</DropdownItem>
+      </Dropdown>
+
+      {/* ========================================================== */}
+      {/* (NEW) Structures 結構按鈕 */}
+      {/* ========================================================== */}
+      <Dropdown label="Calculus/Env">
+        <DropdownItem onClick={() => onSimpleInsert('$\\sum_{i=1}^{', '}{x_i}$', 'n')}>Summation (Σ)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\int_{', '}^{b}{f(x)dx}$', 'a')}>Integral (∫)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\lim_{x \\to ', '}{f(x)}$', '0')}>Limit (lim)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$$\\begin{aligned}\n', '\n\\end{aligned}$$', 'f(x) &= ... \\\\')}>Aligned Env</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$$\\begin{pmatrix}\n', '\n\\end{pmatrix}$$', 'a & b \\\\\nc & d')}>Matrix Env</DropdownItem>
+      </Dropdown>
+
     </div>
   )
 }

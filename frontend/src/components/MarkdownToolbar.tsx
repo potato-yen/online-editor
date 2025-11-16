@@ -1,73 +1,104 @@
 // src/components/MarkdownToolbar.tsx
 import React from 'react'
-import { ToolbarProps } from '../types' // 匯入我們剛建立的共享型別
+import { ToolbarProps } from '../types'
+import Dropdown, { DropdownItem } from './Dropdown'
 
-// (CHANGED) 移除 onIndent 屬性 (prop)
+// (CHANGED) ToolbarProps 現在包含了所有函式
 export default function MarkdownToolbar({ 
   onSimpleInsert, 
   onSmartBlock, 
   onSmartInline,
   onRequestTable,
-  // onIndent, // (REMOVED)
+  onRequestSuperscript, // (NEW)
+  onRequestSubscript,  // (NEW)
 }: ToolbarProps) {
-  const btnClass = "w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-800 hover:bg-neutral-700 border border-neutral-600"
-  const dividerClass = "h-px w-full my-1 bg-neutral-700" 
-  const labelClass = "text-xs font-semibold text-neutral-400 mt-2"
+  
+  // (NEW) 單一按鈕的樣式
+  const btnClass = "px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-800 hover:bg-neutral-700 border border-neutral-600"
 
   return (
-    <div className="flex flex-col gap-2">
-      {/* 基礎格式 */}
-      <span className={labelClass}>Style</span>
-      <button onClick={() => onSmartInline('**', 'bold text')} className={btnClass} title="粗體">Bold</button>
-      <button onClick={() => onSmartInline('*', 'italic text')} className={btnClass} title="斜體">Italic</button>
-      <button onClick={() => onSmartInline('~~', 'strikethrough')} className={btnClass} title="刪除線">Strike</button>
-      <button onClick={() => onSmartInline('`', 'code')} className={btnClass} title="行內程式碼">Code</button>
+    // (CHANGED) 改為 flex-row (水平排列)
+    <div className="flex flex-wrap items-center gap-2">
       
-      <div className={dividerClass} />
+      {/* --- Style (行內) --- */}
+      <Dropdown label="Style">
+        <DropdownItem onClick={() => onSmartInline('**', 'bold text')}>Bold</DropdownItem>
+        <DropdownItem onClick={() => onSmartInline('*', 'italic text')}>Italic</DropdownItem>
+        <DropdownItem onClick={() => onSmartInline('~~', 'strikethrough')}>Strike</DropdownItem>
+        <DropdownItem onClick={() => onSmartInline('`', 'code')}>Code</DropdownItem>
+      </Dropdown>
 
-      {/* 標題 */}
-      <span className={labelClass}>Heading</span>
-      <button onClick={() => onSmartBlock('# ', 'heading')} className={btnClass} title="標題 1">H1</button>
-      <button onClick={() => onSmartBlock('## ', 'heading')} className={btnClass} title="標題 2">H2</button>
-      <button onClick={() => onSmartBlock('### ', 'heading')} className={btnClass} title="標題 3">H3</button>
+      {/* --- Heading (區塊) --- */}
+      <Dropdown label="Heading">
+        <DropdownItem onClick={() => onSmartBlock('# ', 'heading')}>Heading 1</DropdownItem>
+        <DropdownItem onClick={() => onSmartBlock('## ', 'heading')}>Heading 2</DropdownItem>
+        <DropdownItem onClick={() => onSmartBlock('### ', 'heading')}>Heading 3</DropdownItem>
+      </Dropdown>
+      
+      {/* --- Block (區塊) --- */}
+      <Dropdown label="Block">
+        <DropdownItem onClick={() => onSmartBlock('> ', 'quote')}>Quote</DropdownItem>
+        <DropdownItem onClick={() => onSmartBlock('* ', 'list')}>List (Bullet)</DropdownItem>
+        <DropdownItem onClick={() => onSmartBlock('1. ', 'list')}>List (Number)</DropdownItem>
+        <DropdownItem onClick={() => onSmartBlock('* [ ] ', 'task')}>Task List</DropdownItem>
+      </Dropdown>
 
-      <div className={dividerClass} />
-      
-      {/* 區塊 (Block) */}
-      <span className={labelClass}>Block</span>
-      <button onClick={() => onSmartBlock('> ', 'quote')} className={btnClass} title="引用">Quote</button>
-      <button onClick={() => onSmartBlock('* ', 'list')} className={btnClass} title="項目清單">List</button>
-      <button onClick={() => onSmartBlock('1. ', 'list')} className={btnClass} title="數字清單">Num List</button>
-      <button onClick={() => onSmartBlock('* [ ] ', 'task')} className={btnClass} title="待辦清單">Task</button>
+      {/* --- Element (插入) --- */}
+      <Dropdown label="Insert">
+        <DropdownItem onClick={() => onSimpleInsert('[', '](https://)', 'link text')}>Link</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('![', '](image-url)', 'alt text')}>Image</DropdownItem>
+        <DropdownItem onClick={onRequestTable}>Table</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('\n---\n', '', '')}>Horizontal Rule</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('```javascript\n', '\n```', '// code')}>Code Block</DropdownItem>
+      </Dropdown>
 
-      {/* (REMOVED) 刪除 Indent 區塊 */}
-      {/* <div className={dividerClass} />
-      <span className={labelClass}>Indent</span>
-      <button onClick={() => onIndent('indent')} className={btnClass} title="增加縮排 (巢狀清單)">Indent (Tab)</button>
-      <button onClick={() => onIndent('outdent')} className={btnClass} title="減少縮排 (取消巢狀)">Outdent (Shift+Tab)</button> */}
-      
-      <div className={dividerClass} />
-      
-      {/* 特殊元素 (Element) */}
-      <span className={labelClass}>Element</span>
-      <button onClick={() => onSimpleInsert('[', '](https://)', 'link text')} className={btnClass} title="插入連結">Link</button>
-      <button onClick={() => onSimpleInsert('![', '](image-url)', 'alt text')} className={btnClass} title="插入圖片">Image</button>
-      <button onClick={() => onSimpleInsert('\n---\n', '', '')} className={btnClass} title="水平分隔線">HR</button>
-      <button onClick={onRequestTable} className={btnClass} title="插入表格">Table</button>
-      
-      <div className={dividerClass} />
-      <span className={labelClass}>Inline HTML</span>
-      <button onClick={() => onSmartInline('<kbd>', '</kbd>', 'Ctrl')} className={btnClass} title="鍵盤按鍵">KBD Tag</button>
-      <button onClick={() => onSmartInline('<mark>', '</mark>', 'highlight')} className={btnClass} title="高亮標記">Mark Tag</button>
+      {/* --- HTML (行內) --- */}
+      <Dropdown label="HTML">
+        <DropdownItem onClick={() => onSmartInline('<kbd>', '</kbd>', 'Ctrl')}>KBD Tag</DropdownItem>
+        <DropdownItem onClick={() => onSmartInline('<mark>', '</mark>', 'highlight')}>Mark Tag</DropdownItem>
+      </Dropdown>
 
-      <div className={dividerClass} />
+      {/* ========================================================== */}
+      {/* (UPGRADED) Math 數學按鈕 */}
+      {/* ========================================================== */}
+      <Dropdown label="Math">
+        <DropdownItem onClick={() => onSimpleInsert('$', '$', 'E = mc^2')}>Inline Math $...$</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$$\n', '\n$$', 'f(x) = ...')}>Block Math $$...$$</DropdownItem>
+        <DropdownItem onClick={onRequestSuperscript}>Superscript x^y</DropdownItem>
+        <DropdownItem onClick={onRequestSubscript}>Subscript x_i</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\frac{', '}{denominator}$', 'numerator')}>Fraction</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\sqrt{', '}$', 'x')}>Square Root</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\sqrt[', ']{x}$', 'n')}>Nth Root</DropdownItem>
+      </Dropdown>
+
+      {/* ========================================================== */}
+      {/* (NEW) Symbols 符號按鈕 */}
+      {/* ========================================================== */}
+      <Dropdown label="Symbols">
+        <DropdownItem onClick={() => onSimpleInsert(' $\\pi$ ', '', '')}>Pi (π)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\theta$ ', '', '')}>Theta (θ)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\alpha$ ', '', '')}>Alpha (α)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\beta$ ', '', '')}>Beta (β)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\Delta$ ', '', '')}>Delta (Δ)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\times$ ', '', '')}>Times (×)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\div$ ', '', '')}>Divide (÷)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\infty$ ', '', '')}>Infinity (∞)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\pm$ ', '', '')}>Plus/Minus (±)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\to$ ', '', '')}>Arrow (→)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert(' $\\neq$ ', '', '')}>Not Equal (≠)</DropdownItem>
+      </Dropdown>
+
+      {/* ========================================================== */}
+      {/* (NEW) Structures 結構按鈕 */}
+      {/* ========================================================== */}
+      <Dropdown label="Calculus/Env">
+        <DropdownItem onClick={() => onSimpleInsert('$\\sum_{i=1}^{', '}{x_i}$', 'n')}>Summation (Σ)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\int_{', '}^{b}{f(x)dx}$', 'a')}>Integral (∫)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$\\lim_{x \\to ', '}{f(x)}$', '0')}>Limit (lim)</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$$\\begin{aligned}\n', '\n\\end{aligned}$$', 'f(x) &= ... \\\\')}>Aligned Env</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('$$\\begin{pmatrix}\n', '\n\\end{pmatrix}$$', 'a & b \\\\\nc & d')}>Matrix Env</DropdownItem>
+      </Dropdown>
       
-      {/* 程式碼 & 數學 (Code/Math) */}
-      <span className={labelClass}>Code/Math</span>
-      <button onClick={() => onSimpleInsert('```javascript\n', '\n```', '// code')} className={btnClass} title="程式碼區塊">Code Block</button>
-      <button onClick={() => onSimpleInsert('$', '$', 'E = mc^2')} className={btnClass} title="LaTeX 行內公式">$...$</button>
-      <button onClick={() => onSimpleInsert('$$\n', '\n$$', 'f(x) = ...')} className={btnClass} title="LaTeX 區塊公式">$$...$$</button>
-      <button onClick={() => onSimpleInsert('$\\frac{', '}{denominator}$', 'numerator')} className={btnClass} title="LaTeX 分數">Fraction</button>
     </div>
   )
 }
