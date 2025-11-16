@@ -1,6 +1,6 @@
 // src/components/EditorPane.tsx
 import React from 'react'
-import type { Mode } from '../App'
+import type { Mode } from '../types'
 
 // ===================================================================
 // (MERGED) 接收 editorRef, onScroll, 和 onKeyDown
@@ -9,7 +9,7 @@ interface EditorPaneProps {
   mode: Mode
   text: string
   onTextChange: (newText: string) => void
-  style: React.CSSProperties
+  style?: React.CSSProperties
   // (NEW)
   editorRef: React.RefObject<HTMLTextAreaElement>
   onScroll: (e: React.UIEvent<HTMLTextAreaElement>) => void

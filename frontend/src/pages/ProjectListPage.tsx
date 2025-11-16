@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import type { Mode } from '../App'
+import type { Mode } from '../types'
 
 type DocType = Mode
 

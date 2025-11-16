@@ -130,7 +130,6 @@ export default function LatexEditorPage() {
   return (
     <EditorCore
       initialMode="latex"
-      allowModeSwitch={false}
       initialText={doc.content}
       saveStatus={saveStatus}
       onContentChange={handleContentChange}

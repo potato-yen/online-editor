@@ -31,7 +31,27 @@ import SuperscriptModal from './components/SuperscriptModal'
 import SubscriptModal from './components/SubscriptModal'
 import MatrixModal from './components/MatrixModal' 
 
-const BACKEND_URL = 'http://localhost:3001/compile-latex'
+const DEFAULT_BACKEND_URL = 'http://localhost:3001/compile-latex'
+
+function resolveBackendURL() {
+  const envURL = import.meta.env.VITE_BACKEND_URL?.trim()
+  if (envURL) {
+    return envURL
+  }
+
+  if (typeof window !== 'undefined') {
+    const origin = new URL(window.location.origin)
+    origin.port = '3001'
+    origin.pathname = '/compile-latex'
+    origin.search = ''
+    origin.hash = ''
+    return origin.toString()
+  }
+
+  return DEFAULT_BACKEND_URL
+}
+
+const BACKEND_URL = resolveBackendURL()
 
 
 // ===================================================================
@@ -601,7 +621,7 @@ export function EditorCore({
     window.addEventListener('mouseup', handleMouseUp)
     return () => {
       window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('mouseup', handleMouseUp)
     }
   }, [isResizing])
 

@@ -55,8 +55,8 @@ export default function MarkdownToolbar({
 
       {/* --- HTML (行內) --- */}
       <Dropdown label="HTML">
-        <DropdownItem onClick={() => onSmartInline('<kbd>', '</kbd>', 'Ctrl')}>KBD Tag</DropdownItem>
-        <DropdownItem onClick={() => onSmartInline('<mark>', '</mark>', 'highlight')}>Mark Tag</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('<kbd>', '</kbd>', 'Ctrl')}>KBD Tag</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('<mark>', '</mark>', 'highlight')}>Mark Tag</DropdownItem>
       </Dropdown>
 
       {/* ========================================================== */}

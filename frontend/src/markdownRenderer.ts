@@ -65,7 +65,7 @@ export async function renderMarkdownToHTML(markdown: string): Promise<string> {
     .use(remarkRehype, { allowDangerousHtml: true }) // 5. 轉成 HTML (hast)
     .use(rehypeKatex) // 6. (FIXED) 先處理 KaTeX 數學公式
     .use(rehypeRaw)  // 7. (FIXED) 再處理 Markdown 中的 <raw_html>
-    .use(rehypeHighlight, { subset: false }) // 8. (NEW) 執行語法高亮處理
+    .use(rehypeHighlight) // 8. (NEW) 執行語法高亮處理
     .use(addLinkTargetBlank) // 9. 幫連結加上 target="_blank"
     .use(addSourceLines) // 10. 加上 data-line 屬性 (這樣 KaTeX 的 <span> 也會有)
     .use(rehypeStringify) // 11. 轉成 HTML 字串

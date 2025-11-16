@@ -2,7 +2,7 @@
 // (NEW) - Right pane preview
 
 import React from 'react'
-import { Mode } from '../App' // (FIXED) 匯入 App.tsx 的 Mode
+import type { Mode } from '../types'
 
 // ===================================================================
 // (MERGED) 移除 onScroll 屬性 (prop)
