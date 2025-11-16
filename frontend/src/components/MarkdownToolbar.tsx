@@ -9,8 +9,9 @@ export default function MarkdownToolbar({
   onSmartBlock, 
   onSmartInline,
   onRequestTable,
-  onRequestSuperscript, // (NEW)
-  onRequestSubscript,  // (NEW)
+  onRequestSuperscript, 
+  onRequestSubscript,  
+  onRequestMatrix, // (NEW)
 }: ToolbarProps) {
   
   // (NEW) 單一按鈕的樣式
@@ -96,7 +97,8 @@ export default function MarkdownToolbar({
         <DropdownItem onClick={() => onSimpleInsert('$\\int_{', '}^{b}{f(x)dx}$', 'a')}>Integral (∫)</DropdownItem>
         <DropdownItem onClick={() => onSimpleInsert('$\\lim_{x \\to ', '}{f(x)}$', '0')}>Limit (lim)</DropdownItem>
         <DropdownItem onClick={() => onSimpleInsert('$$\\begin{aligned}\n', '\n\\end{aligned}$$', 'f(x) &= ... \\\\')}>Aligned Env</DropdownItem>
-        <DropdownItem onClick={() => onSimpleInsert('$$\\begin{pmatrix}\n', '\n\\end{pmatrix}$$', 'a & b \\\\\nc & d')}>Matrix Env</DropdownItem>
+        {/* (CHANGED) 更新 Matrix Env 按鈕 */}
+        <DropdownItem onClick={onRequestMatrix}>Matrix Env</DropdownItem>
       </Dropdown>
       
     </div>

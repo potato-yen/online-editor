@@ -10,7 +10,8 @@ export interface ToolbarProps {
   onSmartBlock: (prefix: string, type: 'heading' | 'list' | 'quote' | 'task') => void;
   onSmartInline: (wrapChars: string, placeholder: string) => void;
   onRequestTable: () => void;
-  // (NEW) 智慧型數學按鈕
   onRequestSuperscript: () => void;
   onRequestSubscript: () => void;
+  // (NEW) 智慧型矩陣按鈕
+  onRequestMatrix: () => void;
 }

@@ -1,10 +1,11 @@
 // src/App.tsx
 // (REFACTORED)
 // ... (所有舊功能)
-// 16. (FIXED) 升級 Superscript/Subscript 按鈕，支援 Modal (無選取) 和 Wrap (有選取)
+// 21. (FIX) 修正 window.print() 邏輯，加入 .non-printable class
 
 import React, { useState, useEffect, useRef } from 'react'
-import html2pdf from 'html2pdf.js'
+// (REMOVED) html2pdf.js 已不再需要
+// import html2pdf from 'html2pdf.js' 
 import { renderMarkdownToHTML } from './markdownRenderer'
 import 'katex/dist/katex.min.css'
 import 'highlight.js/styles/atom-one-dark.css'; 
@@ -26,9 +27,9 @@ import { Mode, SaveStatus } from './types'
 import MarkdownToolbar from './components/MarkdownToolbar'
 import LatexToolbar from './components/LatexToolbar'
 import TableModal from './components/TableModal' 
-// (NEW) 匯入新的數學 Modals
 import SuperscriptModal from './components/SuperscriptModal'
 import SubscriptModal from './components/SubscriptModal'
+import MatrixModal from './components/MatrixModal' 
 
 const BACKEND_URL = 'http://localhost:3001/compile-latex'
 
@@ -71,9 +72,9 @@ export function EditorCore({
   const [isResizing, setIsResizing] = useState(false)
   
   const [isTableModalOpen, setIsTableModalOpen] = useState(false);
-  // (NEW) 新增數學 Modals 的 State
   const [isSuperscriptModalOpen, setIsSuperscriptModalOpen] = useState(false);
   const [isSubscriptModalOpen, setIsSubscriptModalOpen] = useState(false);
+  const [isMatrixModalOpen, setIsMatrixModalOpen] = useState(false); 
 
   const containerRef = useRef<HTMLDivElement | null>(null)
   
@@ -271,7 +272,7 @@ export function EditorCore({
     editor.focus();
 
     if (isMultiLine) {
-      // 情況 A: 多行文字 (例如 Matrix Env)
+      // 情況 A: 多行文字 (例如 Table)
       console.warn("Forcing state update for multi-line insert (Undo not supported for this action).");
       const newText =
         value.substring(0, selectionStart) +
@@ -292,7 +293,7 @@ export function EditorCore({
       }, 0);
 
     } else {
-      // 情況 B: 單行文字 (支援 Undo)
+      // 情況 B: 單行文字 (例如 Math, KBD - 支援 Undo)
       const isSuccess = document.execCommand('insertText', false, textToInsert);
       if (isSuccess && !selectedText) {
         const newCursorStart = selectionStart + templateStart.length;
@@ -313,29 +314,43 @@ export function EditorCore({
 
 
   // ===================================================================
-  // (NEW) 表格 Modal 的處理函式
+  // (CHANGED) 表格 Modal 的處理函式 (升級版)
   // ===================================================================
   const handleRequestTable = () => {
     setIsTableModalOpen(true);
   };
-  const handleCreateTable = (rows: number, cols: number) => {
+  const handleCreateTable = (tableData: string[][]) => { // (CHANGED) 接收二維陣列
     if (!editorRef.current) return;
-    let table = '\n|';
-    for (let c = 0; c < cols; c++) {
-      table += ` Header ${c + 1} |`;
+
+    const rows = tableData.length;
+    if (rows === 0) return;
+    const cols = tableData[0]?.length;
+    if (cols === 0) return;
+
+    let table = '\n'; // 確保表格在新的一行
+    
+    // 1. 建立標頭 (Header)
+    const headerLine = '| ' + tableData[0].join(' | ') + ' |';
+    table += headerLine + '\n';
+
+    // 2. 建立分隔線 (Separator)
+    // (FIXED) 確保分隔線 `---` 至少有 3 個破折號
+    const separatorLine = '|' + tableData[0].map(() => ' :--- ').join('|') + '|';
+    table += separatorLine + '\n';
+
+    // 3. 建立資料列 (Rows)
+    for (let r = 1; r < rows; r++) { // (CHANGED) 從 1 開始
+      table += '| ' + tableData[r].join(' | ') + ' |\n';
     }
-    table += '\n|';
-    for (let c = 0; c < cols; c++) {
-      table += ' :--- |';
-    }
-    for (let r = 0; r < rows; r++) {
-      table += '\n|';
-      for (let c = 0; c < cols; c++) {
-        table += ` Cell ${r + 1}-${c + 1} |`;
-      }
-    }
-    table += '\n';
-    handleSimpleInsert(table, '', '');
+
+    // 4. 準備自動反白
+    const placeholder = tableData[0][0]; // "Header 1"
+    const placeholderIndex = table.indexOf(placeholder);
+    const templateStart = table.substring(0, placeholderIndex);
+    const templateEnd = table.substring(placeholderIndex + placeholder.length);
+    
+    // 5. 呼叫 handleSimpleInsert (它現在會偵測到 \n 並使用 Fallback)
+    handleSimpleInsert(templateStart, templateEnd, placeholder);
     setIsTableModalOpen(false);
   };
 
@@ -349,22 +364,16 @@ export function EditorCore({
     const { selectionStart, selectionEnd, value } = editor;
 
     if (selectionStart === selectionEnd) {
-      // 情況 1: 沒有選取 -> 開啟 Modal
       setIsSuperscriptModalOpen(true);
     } else {
-      // 情況 2: 有選取 (e.g., "x") -> 直接插入 $x^{exponent}$
       const selectedText = value.substring(selectionStart, selectionEnd);
       const placeholder = 'exponent';
-      const templateStart = `$${selectedText}^{`; // e.g., $x^{
-      const templateEnd = `}$`; // e.g., }$
-      const textToInsert = templateStart + placeholder + templateEnd; // e.g., $x^{exponent}$
-
-      // 執行插入 (替換掉 "x")
+      const templateStart = `$${selectedText}^{`; 
+      const templateEnd = `}$`; 
+      const textToInsert = templateStart + placeholder + templateEnd; 
       editor.focus();
       editor.setSelectionRange(selectionStart, selectionEnd); 
       document.execCommand('insertText', false, textToInsert);
-
-      // 恢復選取 (選取 "exponent")
       setTimeout(() => {
         editor.focus();
         const newCursorStart = selectionStart + templateStart.length;
@@ -374,7 +383,6 @@ export function EditorCore({
     }
   };
   const handleCreateSuperscript = (base: string, exponent: string) => {
-    // Modal 建立的永遠是「完整」的 $...$ 區塊
     handleSimpleInsert(`$${base}^{${exponent}}$`, '', '');
     setIsSuperscriptModalOpen(false);
   };
@@ -386,22 +394,18 @@ export function EditorCore({
     const { selectionStart, selectionEnd, value } = editor;
 
     if (selectionStart === selectionEnd) {
-      // 情況 1: 沒有選取 -> 開啟 Modal
       setIsSubscriptModalOpen(true);
     } else {
-      // 情況 2: 有選取 (e.g., "x") -> 直接插入 $x_{index}$
       const selectedText = value.substring(selectionStart, selectionEnd);
       const placeholder = 'index';
-      const templateStart = `$${selectedText}_{`; // e.g., $x_{
-      const templateEnd = `}$`; // e.g., }$
-      const textToInsert = templateStart + placeholder + templateEnd; // e.g., $x_{index}$
+      const templateStart = `$${selectedText}_{`; 
+      const templateEnd = `}$`; 
+      const textToInsert = templateStart + placeholder + templateEnd; 
 
-      // 執行插入 (替換掉 "x")
       editor.focus();
       editor.setSelectionRange(selectionStart, selectionEnd); 
       document.execCommand('insertText', false, textToInsert);
 
-      // 恢復選取 (選取 "index")
       setTimeout(() => {
         editor.focus();
         const newCursorStart = selectionStart + templateStart.length;
@@ -415,6 +419,55 @@ export function EditorCore({
     setIsSubscriptModalOpen(false);
   };
 
+  // ===================================================================
+  // (FINAL FIX) 智慧型矩陣按鈕邏輯 (修正語法 + 自動反白 a_11)
+  // ===================================================================
+  const handleRequestMatrix = () => {
+    setIsMatrixModalOpen(true);
+  };
+  
+  // (CHANGED) 接收來自 Modal 的二維陣列
+  const handleCreateMatrix = (matrixData: string[][]) => {
+    const placeholder = matrixData[0][0]; // 這是我們將反白的第一個元素
+    let matrixBody = '';
+    const rows = matrixData.length;
+    const cols = matrixData[0]?.length || 0;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        
+        // 加上「&」分隔符 (除了第一欄)
+        if (c > 0) {
+          matrixBody += ' & ';
+        }
+        // 插入 Modal 傳來的元素值
+        matrixBody += matrixData[r][c] || `a_{${r+1}${c+1}}`;
+      }
+      
+      // (FINAL FIX) 移除所有 \n，只使用 LaTeX 換行符 \\
+      if (r < rows - 1) {
+        matrixBody += ' \\\\ '; 
+      }
+    }
+    
+    // (FINAL FIX) 確保所有內容都在「單行」傳遞給 handleSimpleInsert
+    const templateStart = '$$\\begin{bmatrix}'; // (CHANGED) 使用 bmatrix
+    
+    // (FIXED) 找出 placeholder 在 matrixBody 中的位置
+    const placeholderIndex = matrixBody.indexOf(placeholder);
+
+    // (FIXED) templateStart 應該包含 placeholder 之前的所有內容
+    const finalTemplateStart = templateStart + matrixBody.substring(0, placeholderIndex);
+    
+    // (FIXED) templateEnd 應該包含 placeholder 之後的所有內容
+    const finalTemplateEnd = matrixBody.substring(placeholderIndex + placeholder.length) + '\\end{bmatrix}$$'; // (CHANGED) 使用 bmatrix
+    
+    // 呼叫 handleSimpleInsert (它現在是單行，會支援 Undo)
+    handleSimpleInsert(finalTemplateStart, finalTemplateEnd, placeholder);
+        
+    setIsMatrixModalOpen(false);
+  };
+
 
   // ===================================================================
   // (NEW) 巢狀清單縮排/取消縮排的核心邏輯
@@ -422,29 +475,21 @@ export function EditorCore({
   function handleIndent(action: 'indent' | 'outdent') {
     const editor = editorRef.current;
     if (!editor) return;
-
     const { selectionStart, selectionEnd, value } = editor;
-    
     const isSingleCaret = selectionStart === selectionEnd;
-    
     if (isSingleCaret && !value.substring(selectionStart, selectionEnd).includes('\n')) {
         return; 
     }
-    
     let startLineIndex = value.lastIndexOf('\n', selectionStart - 1) + 1;
     let endLineIndex = selectionEnd;
-    
     if (value[endLineIndex - 1] === '\n') {
         endLineIndex -= 1;
     }
-
     const selectedText = value.substring(startLineIndex, endLineIndex);
     const lines = selectedText.split('\n');
-    const indentChars = '    '; // 4 個空格
-
+    const indentChars = '    ';
     let newLines = [];
     let indentChange = 0; 
-
     if (action === 'indent') {
       newLines = lines.map(line => {
         if (line.trim().length > 0) {
@@ -466,17 +511,15 @@ export function EditorCore({
         return line;
       });
     }
-
     const newTextToInsert = newLines.join('\n');
-    
     editor.focus();
     editor.setSelectionRange(startLineIndex, endLineIndex);
     document.execCommand('insertText', false, newTextToInsert);
-
     setTimeout(() => {
         editor.focus();
         
-        const newSelStart = selectionStart + indentChange;
+        // (FIXED) 修正選取邏輯
+        const newSelStart = (selectionStart === startLineIndex) ? startLineIndex : selectionStart + (action === 'indent' ? indentChars.length : -indentChars.length);
         const newSelEnd = selectionEnd + indentChange;
 
         editor.setSelectionRange(newSelStart, newSelEnd);
@@ -620,43 +663,18 @@ export function EditorCore({
     URL.revokeObjectURL(url)
   }
 
-  // (FIXED) 匯出 PDF（智慧型換頁）
+  // ===================================================================
+  // (FIXED) 匯出 PDF 改用 window.print()，解決 html2canvas 跑版問題
+  // ===================================================================
   const handleExportPDF = async () => {
     if (mode === 'latex') {
-      return
+      alert("PDF 匯出僅適用於 Markdown 模式。\n請在 LaTeX 模式下使用 '編譯並預覽'，然後從 PDF 檢視器中下載。");
+      return;
     }
-    if (!renderedHTML || !renderedHTML.trim()) {
-      return
-    }
-    const wrapper = document.createElement('div')
-    wrapper.className = 'pdf-export prose prose-neutral'
-    wrapper.innerHTML = renderedHTML
-    document.body.appendChild(wrapper)
-    const opt = {
-      margin: 10,
-      filename: 'document.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-      },
-      jsPDF: {
-        unit: 'mm',
-        format: 'a4',
-        orientation: 'portrait',
-      },
-      pagebreak: {
-        mode: ['avoid-all', 'css', 'legacy'],
-        avoid: ['p', 'li', 'pre', 'code', 'table', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'hr'],
-      },
-    }
-    try {
-      await (html2pdf() as any).set(opt as any).from(wrapper).save()
-    } finally {
-      document.body.removeChild(wrapper)
-    }
-  }
+    
+    // 觸發瀏覽器內建的列印功能
+    window.print();
+  };
 
   // ---------- LaTeX 編譯 (組員的原始碼) ----------
   const handleCompileLatex = async () => {
@@ -712,60 +730,76 @@ export function EditorCore({
   // ===================================================================
   return (
     <div className="flex h-screen flex-col bg-neutral-950 text-neutral-100 overflow-hidden"> 
-      <AppHeader
-        mode={mode}
-        isCompiling={isCompiling}
-        saveStatus={saveStatus}
-        onImportClick={handleImportClick}
-        onCompileLatex={handleCompileLatex}
-        onExportSource={handleExportSource}
-        onExportPDF={handleExportPDF}
-        onManualSave={onManualSave}
-        toolbarUI={headerToolbarUI} 
-      />
+      
+      {/* (FIXED) 加上 non-printable class */}
+      <div className="non-printable">
+        <AppHeader
+          mode={mode}
+          isCompiling={isCompiling}
+          saveStatus={saveStatus}
+          onImportClick={handleImportClick}
+          onCompileLatex={handleCompileLatex}
+          onExportSource={handleExportSource}
+          onExportPDF={handleExportPDF}
+          onManualSave={onManualSave}
+          toolbarUI={headerToolbarUI} 
+        />
+      </div>
 
-      {/* (NEW) 渲染 Table Modal (它預設是隱藏的) */}
-      <TableModal 
-        isOpen={isTableModalOpen}
-        onClose={() => setIsTableModalOpen(false)}
-        onCreate={handleCreateTable}
-      />
-      {/* (NEW) 渲染 Superscript Modal */}
-      <SuperscriptModal
-        isOpen={isSuperscriptModalOpen}
-        onClose={() => setIsSuperscriptModalOpen(false)}
-        onCreate={handleCreateSuperscript}
-      />
-      {/* (NEW) 渲染 Subscript Modal */}
-      <SubscriptModal
-        isOpen={isSubscriptModalOpen}
-        onClose={() => setIsSubscriptModalOpen(false)}
-        onCreate={handleCreateSubscript}
-      />
+      {/* (FIXED) 加上 non-printable class */}
+      <div className="non-printable">
+        {/* (NEW) 渲染 Table Modal (它預設是隱藏的) */}
+        <TableModal 
+          isOpen={isTableModalOpen}
+          onClose={() => setIsTableModalOpen(false)}
+          onCreate={handleCreateTable}
+        />
+        {/* (NEW) 渲染 Superscript Modal */}
+        <SuperscriptModal
+          isOpen={isSuperscriptModalOpen}
+          onClose={() => setIsSuperscriptModalOpen(false)}
+          onCreate={handleCreateSuperscript}
+        />
+        {/* (NEW) 渲染 Subscript Modal */}
+        <SubscriptModal
+          isOpen={isSubscriptModalOpen}
+          onClose={() => setIsSubscriptModalOpen(false)}
+          onCreate={handleCreateSubscript}
+        />
+        {/* (NEW) 渲染 Matrix Modal */}
+        <MatrixModal
+          isOpen={isMatrixModalOpen}
+          onClose={() => setIsMatrixModalOpen(false)}
+          onCreate={handleCreateMatrix}
+        />
+      </div>
 
       <input
         ref={fileInputRef}
         type="file"
         accept=".md,.txt,.tex"
-        className="hidden"
+        className="hidden non-printable" // (FIXED) 加上 non-printable
         onChange={handleFileImport}
       />
 
-      <div className="flex flex-wrap items-center gap-2 p-3 border-b border-neutral-800 bg-neutral-950/80">
+      {/* (NEW) 頂部水平工具列 */}
+      <div className="flex flex-wrap items-center gap-2 p-3 border-b border-neutral-800 bg-neutral-950/80 non-printable"> {/* (FIXED) 加上 non-printable */}
         {mode === 'markdown' ? (
           <MarkdownToolbar 
             onSimpleInsert={handleSimpleInsert}
             onSmartBlock={handleSmartBlock}
             onSmartInline={handleSmartInline}
             onRequestTable={handleRequestTable}
-            onRequestSuperscript={handleRequestSuperscript} // (NEW)
-            onRequestSubscript={handleRequestSubscript}   // (NEW)
+            onRequestSuperscript={handleRequestSuperscript}
+            onRequestSubscript={handleRequestSubscript}
+            onRequestMatrix={handleRequestMatrix} // (NEW)
           />
         ) : (
           <LatexToolbar 
             onSimpleInsert={handleSimpleInsert}
-            onRequestSuperscript={handleRequestSuperscript} // (NEW)
-            onRequestSubscript={handleRequestSubscript}   // (NEW)
+            onRequestSuperscript={handleRequestSuperscript}
+            onRequestSubscript={handleRequestSubscript}
+            onRequestMatrix={handleRequestMatrix} // (NEW)
           />
         )}
       </div>
@@ -774,22 +808,33 @@ export function EditorCore({
         ref={containerRef}
         className="flex-1 flex flex-row overflow-hidden"
       >
-        <EditorPane
-          mode={mode}
-          text={text}
-          onTextChange={handleTextChange}
+        {/* (FIXED) 編輯區 Section 加上 non-printable */}
+        <section 
+          className="flex-1 flex flex-col non-printable" 
           style={{ width: leftWidth }}
-          editorRef={editorRef}
-          onScroll={handleEditorScroll}
-          onKeyDown={handleTabKey}
-        />
+        >
+          <EditorPane
+            mode={mode}
+            text={text}
+            onTextChange={handleTextChange}
+            // (REMOVED) style 已移到父層
+            editorRef={editorRef}
+            onScroll={handleEditorScroll}
+            onKeyDown={handleTabKey}
+          />
+        </section>
 
+        {/* (FIXED) 拖曳條 加上 non-printable */}
         <div
-          className="w-1 cursor-col-resize bg-neutral-900 hover:bg-neutral-700 transition-colors"
+          className="w-1 cursor-col-resize bg-neutral-900 hover:bg-neutral-700 transition-colors non-printable"
           onMouseDown={handleResizeStart}
         />
 
-        <div style={{ width: rightWidth }} className="flex-1 flex">
+        {/* (REMOVED) 移除 printable-area class */}
+        <div 
+          style={{ width: rightWidth }} 
+          className="flex-1 flex"
+        >
           <PreviewPane
             mode={mode}
             renderedHTML={renderedHTML}

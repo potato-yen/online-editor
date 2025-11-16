@@ -26,7 +26,11 @@ export default function PreviewPane({
 }: Props) {
   return (
     <section className="flex-1 flex flex-col bg-neutral-900 overflow-hidden">
-      <div className="px-4 py-2 text-[11px] uppercase tracking-wide text-neutral-400 border-b border-neutral-800 flex items-center justify-between">
+      
+      {/* ================================================== */}
+      {/* (FIXED) 幫這個標頭加上 non-printable */}
+      {/* ================================================== */}
+      <div className="px-4 py-2 text-[11px] uppercase tracking-wide text-neutral-400 border-b border-neutral-800 flex items-center justify-between non-printable">
         <span className="font-semibold">Preview</span>
         <span className="text-neutral-500">即時渲染結果</span>
       </div>

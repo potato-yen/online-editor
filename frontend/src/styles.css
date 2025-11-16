@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========================================================= */
+/* (NEW FIX) 強制 HTML 和 BODY 都不准滾動 */
+/* ========================================================= */
+html {
+  overflow: hidden !important; /* 強制 HTML 元素隱藏滾輪 */
+}
+body {
+  margin: 0;
+  overflow: hidden !important; /* 再次強調 BODY 隱藏滾輪 */
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+/* ========================================================= */
+
+
 /* custom scrollbars */
 .scrollbar-thin {
   scrollbar-width: thin;
@@ -18,180 +36,8 @@
   border-radius: 9999px;
 }
 
-/* printing hooks for better PDF pagination */
-@media print {
-  .page-break-before {
-    page-break-before: always;
-  }
-  .avoid-break-inside {
-    page-break-inside: avoid;
-  }
-
-  body {
-    color: #000;
-    background: #fff;
-    font-size: 12pt;
-    line-height: 1.5;
-  }
-
-  table {
-    page-break-inside: avoid;
-  }
-}
-
-/* better table borders in dark mode preview */
-.prose :where(table):not(:where([class~=not-prose] *)) {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1.25em;
-  margin-bottom: 1.25em;
-}
-.prose :where(th, td):not(:where([class~=not-prose] *)) {
-  border: 1px solid rgb(82 82 82 / 1);
-  padding: 0.5rem 0.75rem;
-}
-/* 表格頭列：改為白底黑字 */
-.prose :where(thead th):not(:where([class~=not-prose] *)),
-.pdf-export thead th {
-  background-color: #ffffff !important;
-  color: #111827 !important;
-  font-weight: 600;
-}
-
-/* ===== Markdown 匯出 PDF：淺色主題＋分頁控制 ===== */
-
-/* 匯出 PDF 專用容器 */
-.pdf-export {
-  background: #ffffff !important;
-  color: #111827 !important;
-  padding: 24px;
-  max-width: 800px;
-  box-sizing: border-box;
-}
-
-/* 標題、段落、列表：黑字 */
-.pdf-export h1,
-.pdf-export h2,
-.pdf-export h3,
-.pdf-export h4,
-.pdf-export h5,
-.pdf-export h6,
-.pdf-export p,
-.pdf-export li {
-  color: #111827 !important;
-}
-
-/* 避免文字被切半 */
-.pdf-export p,
-.pdf-export h1,
-.pdf-export h2,
-.pdf-export h3,
-.pdf-export h4,
-.pdf-export h5,
-.pdf-export h6,
-.pdf-export li,
-.pdf-export blockquote,
-.pdf-export pre,
-.pdf-export code,
-.pdf-export table,
-.pdf-export tr,
-.pdf-export td,
-.pdf-export th {
-  page-break-inside: avoid;
-  break-inside: avoid;
-}
-
-/* PDF 中的 code block（```...```）統一樣式 */
-.pdf-export pre {
-  background-color: #111827 !important;
-  border-radius: 0.375rem;
-  overflow-x: auto;
-}
-.pdf-export pre > code[class*="language-"] {
-  display: block;
-  padding: 0.75rem 1rem;
-  background: transparent !important;
-  color: #f9fafb !important;
-}
-
-/* PDF 中 bash 額外調成黑底綠字（如果不需要可以刪掉這兩條） */
-.pdf-export pre > code.language-bash {
-  color: #e5f5c0 !important;
-}
-.pdf-export pre:has(> code.language-bash) {
-  background-color: #000000 !important;
-}
-
-/* PDF 表格樣式 */
-.pdf-export table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.pdf-export th,
-.pdf-export td {
-  border: 1px solid #d4d4d8;
-  padding: 0.5rem 0.75rem;
-  color: #111827 !important;           /* ⬅ 強制黑字 */
-}
-
-/* 表格裡的所有內層元素也跟著黑字，不要再變成淺灰 */
-.pdf-export th *,
-.pdf-export td * {
-  color: inherit !important;
-}
-
-/* PDF 分頁時儘量避免切開這些元素 */
-.pdf-export pre,
-.pdf-export blockquote,
-.pdf-export table,
-.pdf-export .katex-display,
-.pdf-export ul,
-.pdf-export ol,
-.pdf-export li {
-  page-break-inside: avoid;
-  break-inside: avoid-page;
-}
-
-/* ===== 預覽區的 code block：只有真正的區塊黑底，inline code 不動 ===== */
-
-/* 只選擇像 ```lang 產生的 <pre><code class="language-xxx"> */
-.prose :not(pre) > code {
-  background-color: transparent !important;
-  color: inherit !important;
-  padding: 0.15rem 0.25rem;
-  border-radius: 0.25rem;
-  box-shadow: none !important;
-}
-
-/* 外層 pre 一起配合，避免邊緣留白 */
-.prose pre:has(> code[class*="language-"]) {
-  background-color: #111827;
-  border-radius: 0.5rem;
-  padding: 0;
-  overflow-x: auto;
-}
-
-/* 預覽中的 bash block：黑底綠字 */
-.prose pre > code.language-bash {
-  color: #e5f5c0;
-}
-.prose pre:has(> code.language-bash) {
-  background-color: #000000;
-}
-
-html,
-body,
-#root {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  overflow: hidden;        /* 關掉整個頁面的滾動 */
-}
+/* KBD 標籤樣式優化 (適用於 Dark Theme) */
 .prose kbd {
-  /* 移除預設的邊框和陰影 */
   border: none;
   box-shadow: none;
   background-color: #3f3f46; /* neutral-700, 深色背景 */
@@ -199,6 +45,136 @@ body {
   padding: 0.1rem 0.4rem;
   border-radius: 6px;
   font-weight: 500;
-  font-family: inherit; /* 讓字體跟隨 Prose 設定，而不是 Monospace */
+  font-family: inherit;
   white-space: nowrap;
+}
+
+
+/* ========================================================= */
+/* (FIXED) 修正表格邊框在 dark mode (prose-invert) 下消失的問題 */
+/* ========================================================= */
+.prose.prose-invert :where(th, td):not(:where([class~=not-prose] *)) {
+  border: 1px solid rgb(82 82 82 / 1); /* neutral-700 */
+  padding: 0.5rem 0.75rem;
+}
+/* 表格頭列：保持亮色 (組員的原始樣式) */
+.prose.prose-invert :where(thead th):not(:where([class~=not-prose] *)) {
+  background-color: #f4f4f5 !important; /* neutral-100 */
+  color: #18181b !important; /* neutral-900 */
+  font-weight: 600;
+  border-color: rgb(82 82 82 / 1); /* neutral-700 */
+}
+/* ========================================================= */
+
+
+/* ========================================================= */
+/* (FINAL FIX) 瀏覽器原生列印 (window.print) 樣式 */
+/* ========================================================= */
+
+/* 當觸發列印時... */
+@media print {
+  
+  /* 1. (FIXED) 強制隱藏所有帶有 .non-printable class 的元素 */
+  .non-printable {
+    display: none !important;
+  }
+
+  /* 2. (FIXED) 強制重設所有佈局，解除 flex 和 overflow 限制 */
+  body, html, #root {
+    height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+    display: block !important;
+    background: #ffffff !important; /* 強制白底 */
+  }
+
+  /* 3. (FIXED) 抓取 App.tsx 裡的主要 flex 容器，並重設它們 */
+  div[class*="flex-col"],
+  div[class*="flex-row"],
+  div[class*="flex-1"],
+  div[style*="width:"] {
+    display: block !important;
+    height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* 4. 確保 PreviewPane (唯一可見的) 佔滿寬度 */
+  .prose {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* 5. 強制所有子元素在列印時為黑色 */
+  .prose h1, .prose h2, .prose h3, .prose h4, .prose p, .prose li, .prose a,
+  .prose :where(code):not(:where([class~="not-prose"] *)),
+  .prose :where(pre):not(:where([class~="not-prose"] *)),
+  .prose :where(blockquote):not(:where([class~=not-prose] *)),
+  .prose :where(table th, table td):not(:where([class~=not-prose] *)),
+  .katex {
+    color: #000000 !important;
+  }
+
+  /* 6. (FIXED) 修正程式碼區塊和 KBD 的背景 */
+  .prose :where(pre):not(:where([class~="not-prose"] *)) {
+    background-color: #f3f4f6 !important;
+    white-space: pre-wrap !important; 
+    word-wrap: break-word !important;
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    /* (NEW) 強制瀏覽器列印背景顏色 */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ========================================================== */
+  /* (FINAL FIX) 修正 KBD 樣式 (移除橢圓形 + 置中) */
+  /* ========================================================== */
+  .prose kbd {
+    background-color: #eeeeee !important; /* 淺灰色背景 */
+    color: #000000 !important; /* 強制黑字 */
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+    font-weight: 500;
+    font-family: inherit;
+    white-space: nowrap;
+    
+    /* (NEW) 強制瀏覽器列印背景顏色 */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+
+    /* 1. 移除橢圓形 (強制純色邊框) */
+    border: 0px solid #cccccc !important;
+    border-style: solid !important; /* 覆蓋 inset/outset */
+    box-shadow: none !important; /* 移除陰影 */
+
+    /* 2. 文字置中 */
+    display: inline-flex !important; /* 使用 flex 來置中 */
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 1.5em; /* 給 'c' 這類短按鍵一點寬度 */
+    vertical-align: middle; /* 確保與文字對齊 */
+  }
+  
+  /* 7. (NEW) 強制列印 <mark> (高亮) 的背景顏色 */
+  .prose mark {
+    background-color: #fffb8f !important; /* 淺黃色 */
+    color: #000000 !important;
+    /* (NEW) 強制瀏覽器列印背景顏色 */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 8. 移除頁首頁尾 + 設定邊界 */
+  @page {
+    size: A4;
+    margin: 20mm; /* 2cm 邊界 */
+    
+    /* (NEW) 移除瀏覽器預設的頁首 (日期) 和頁尾 (網址) */
+    @top-center { content: ""; }
+    @bottom-center { content: ""; }
+  }
 }
