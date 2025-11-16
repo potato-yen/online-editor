@@ -37,8 +37,9 @@ import MarkdownToolbar from './components/MarkdownToolbar'
 import LatexToolbar from './components/LatexToolbar'
 import TableModal from './components/TableModal' // (NEW) 匯入 Table Modal
 
-const BACKEND_URL = 'http://localhost:3001/compile-latex'
-
+// 優先讀取環境變數，若沒有則使用 localhost:3001 作為備用
+const BACKEND_URL =
+  import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/compile-latex'
 
 // ===================================================================
 // (MERGED) EditorCore - 這是新的「大腦」
