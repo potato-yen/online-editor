@@ -1,118 +1,230 @@
 // src/App.tsx
-// Features:
-// 1. Draggable split pane (left editor / right preview)
-// 2. Markdown rendering with math + tables (KaTeX + remark-gfm)
-// 3. Export .md/.tex source
-// 4. Export PDF using html2pdf.js (front-end only)
-// 5. LaTeX mode: send source to backend, receive compiled PDF blob, preview in iframe
-// 6. Dark UI with Tailwind + typography
-// 7. (New) Import .md/.tex file
 
 import React, { useState, useEffect, useRef } from 'react'
-import { renderMarkdownToHTML } from './markdownRenderer'
 import html2pdf from 'html2pdf.js'
+import { renderMarkdownToHTML } from './markdownRenderer'
 
-// backend endpoint (development assumption)
+import AppHeader from './components/AppHeader'
+import EditorPane from './components/EditorPane'
+import PreviewPane from './components/PreviewPane'
+
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import ProjectListPage from './pages/ProjectListPage'
+import MarkdownEditorPage from './pages/MarkdownEditorPage'
+import LatexEditorPage from './pages/LatexEditorPage'
+
+import LoginPage from './pages/LoginPage'
+import SignupPage from './pages/SignupPage'
+
 const BACKEND_URL = 'http://localhost:3001/compile-latex'
 
-type Mode = 'markdown' | 'latex'
+export type Mode = 'markdown' | 'latex'
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
-export default function App() {
-  const [mode, setMode] = useState<Mode>('markdown')
+type EditorCoreProps = {
+  initialMode: Mode
+  allowModeSwitch?: boolean
+  initialText?: string
+  saveStatus?: SaveStatus
+  onContentChange?: (text: string) => void
+  onManualSave?: () => void
+}
 
-  const [text, setText] = useState<string>([
+export function EditorCore({
+  initialMode,
+  allowModeSwitch = true,
+  initialText,
+  saveStatus = 'idle',
+  onContentChange,
+  onManualSave,
+}: EditorCoreProps) {
+  const [mode, setMode] = useState<Mode>(initialMode)
+  const defaultText = [
     '% Example Markdown or LaTeX input',
     '',
     '# 標題 Title',
     '',
-    '這是一段 **Markdown** 測試文字，含行內公式 $a^2 + b^2 = c^2$.',
+    '這是一段 **Markdown** 或 LaTeX 文字，你可以在左邊編輯，右邊預覽。',
     '',
-    '## 小節',
-    '- 條列 1',
-    '- 條列 2',
+    '## 數學 Math',
     '',
-    '| a | b | a+b |',
-    '|---|---|-----|',
-    '| 1 | 2 | 3   |',
-    '| 3 | 4 | 7   |',
+    '行內公式：$a^2 + b^2 = c^2$',
     '',
-    '$$\\int_0^1 x^2 dx = 1/3$$',
+    '區塊公式：',
     '',
-    '% LaTeX example:',
-    '% \\documentclass{article}',
-    '% \\begin{document}',
-    '% Hello world, this is \\LaTeX',
-    '% \\end{document}',
+    '$$',
+    '\\int_0^1 x^2 \\, dx = \\frac{1}{3}',
+    '$$',
     '',
-  ].join('\n'))
+    '## 表格 Table',
+    '',
+    '| Name | Type | Value |',
+    '|------|------|-------|',
+    '| a    | int  | 42    |',
+    '| b    | str  | hello |',
+  ].join('\n')
 
-  // renderedHTML: what we show in markdown mode
+  const [text, setText] = useState<string>(() => initialText ?? defaultText)
   const [renderedHTML, setRenderedHTML] = useState<string>('')
-
-  // compiled PDF preview URL (blob URL) for LaTeX mode
   const [pdfURL, setPdfURL] = useState<string>('')
-
-  // track loading / error states for LaTeX compile
-  const [isCompiling, setIsCompiling] = useState<boolean>(false)
   const [compileError, setCompileError] = useState<string>('')
+  const [isCompiling, setIsCompiling] = useState(false)
 
-  // Re-render markdown preview when text or mode changes
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      if (mode === 'markdown') {
-        const html = await renderMarkdownToHTML(text)
-        if (!cancelled) setRenderedHTML(html)
-      }
-    })()
-    return () => { cancelled = true }
-  }, [text, mode])
+  const [splitPos, setSplitPos] = useState(50)
+  const [isResizing, setIsResizing] = useState(false)
 
-  // Preview DOM ref (for PDF export of markdown view)
-  const previewRef = useRef(null)
-
-  // (NEW) Ref for the hidden file input
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const previewRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  // Export source file (.md / .tex)
-  function handleExportSource() {
-    const blob = new Blob([text], {
-      type: mode === 'markdown' ? 'text/markdown' : 'application/x-tex',
-    })
+  // ---------- Markdown render ----------
+  useEffect(() => {
+    if (mode !== 'markdown') return
+
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        const html = await renderMarkdownToHTML(text)
+        if (!cancelled) {
+          setRenderedHTML(html)
+        }
+      } catch (err) {
+        console.error('Markdown render error:', err)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [mode, text])
+
+  // ---------- Split pane dragging ----------
+  useEffect(() => {
+    function handleMouseMove(e: MouseEvent) {
+      if (!isResizing || !containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const percent = (x / rect.width) * 100
+      const clamped = Math.min(80, Math.max(20, percent))
+      setSplitPos(clamped)
+    }
+
+    function handleMouseUp() {
+      if (isResizing) setIsResizing(false)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing])
+
+  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }
+
+  // ---------- Mode 切換 ----------
+  const handleSetMode = (m: Mode) => {
+    if (!allowModeSwitch) return
+
+    setMode(m)
+    if (m !== 'latex') {
+      setPdfURL('')
+      setCompileError('')
+    }
+  }
+
+  // ---------- Editor 輸入 ----------
+  const handleTextChange = (newText: string) => {
+    setText(newText)
+    onContentChange?.(newText)
+  }
+
+  // ---------- Import .md / .tex ----------
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const fileName = file.name.toLowerCase()
+    const reader = new FileReader()
+
+    reader.onload = (evt) => {
+      const fileContent = evt.target?.result as string | null
+      if (fileContent == null) {
+        console.error('Failed to read file: content is null')
+        setCompileError('讀取檔案失敗：內容為空')
+        return
+      }
+
+      setText(fileContent)
+      onContentChange?.(fileContent)
+
+      if (allowModeSwitch) {
+        if (fileName.endsWith('.tex')) {
+          setMode('latex')
+          setPdfURL('')
+          setCompileError('')
+        } else if (fileName.endsWith('.md') || fileName.endsWith('.txt')) {
+          setMode('markdown')
+          setCompileError('')
+        }
+      } else {
+        setCompileError('')
+      }
+    }
+
+    reader.onerror = (err) => {
+      console.error('File read error:', err)
+      setCompileError('讀取檔案失敗')
+    }
+
+    reader.readAsText(file, 'utf-8')
+  }
+
+  // ---------- 匯出原始檔 ----------
+  const handleExportSource = () => {
+    const ext = mode === 'latex' ? 'tex' : 'md'
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
 
     const a = document.createElement('a')
     a.href = url
-    a.download = mode === 'markdown' ? 'document.md' : 'document.tex'
+    a.download = `document.${ext}`
     a.click()
+
     URL.revokeObjectURL(url)
   }
 
-  // Export preview DOM as PDF using html2pdf.js (only meaningful in markdown mode)
-  function handleExportPDF() {
-    if (!previewRef.current) return
+  // ---------- 匯出 PDF（只給 Markdown 用，走白底樣式） ----------
+  const handleExportPDF = async () => {
+    // LaTeX 模式不在這裡匯出，直接用瀏覽器 PDF viewer 的下載功能
+    if (mode === 'latex') {
+      return
+    }
 
-    const el = previewRef.current as HTMLElement
+    // 沒有預覽內容就不匯出
+    if (!renderedHTML || !renderedHTML.trim()) {
+      return
+    }
 
-    // 1. 記住原本的 class 和 inline style
-    const originalClassName = el.className
-    const originalStyle = el.getAttribute('style')
+    // 1. 建一個乾淨的白底容器，專門給 PDF 匯出用
+    const wrapper = document.createElement('div')
+    // .pdf-export 的樣式定義在 styles.css（白底黑字、表格、code 等）
+    wrapper.className = 'pdf-export prose prose-neutral'
+    wrapper.innerHTML = renderedHTML
 
-    // 2. 暫時改成適合匯出 PDF 的樣子
-    //    - 去掉深色主題相關 class
-    //    - 加上 pdf-export
-    el.className = originalClassName
-      .replace('prose-invert', '')
-      .replace('bg-neutral-900', '')
-      .replace('text-neutral-100', '')
-      .replace('overflow-auto', '') + ' pdf-export'
+    // 2. 暫時掛到 DOM（不會顯示在螢幕上，但 html2pdf 需要它在 DOM 裡）
+    document.body.appendChild(wrapper)
 
-    // 讓內容可以長高，不被捲軸限制
-    el.style.overflow = 'visible'
-    el.style.maxHeight = 'none'
-    el.style.backgroundColor = '#ffffff'
-    el.style.color = '#111827'
-
+    // 3. 設定匯出選項
     const opt = {
       margin: 10,
       filename: 'document.pdf',
@@ -120,7 +232,7 @@ export default function App() {
       html2canvas: {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#ffffff', // 強制白底
+        backgroundColor: '#ffffff',
       },
       jsPDF: {
         unit: 'mm',
@@ -128,303 +240,125 @@ export default function App() {
         orientation: 'portrait',
       },
       pagebreak: {
-        mode: ['css', 'legacy'],
-        avoid: ['pre', 'code', 'table', 'blockquote', 'li'],
+        mode: ['avoid-all', 'css', 'legacy'],  // ← 新增 avoid-all
+        avoid: ['p', 'li', 'pre', 'code', 'table', 'blockquote'],
       },
-    } as const
+    }
 
-    html2pdf()
-      .set(opt)
-      .from(el)
-      .save()
-      .finally(() => {
-        // 3. 匯出完成後，把 class 和 style 還原
-        el.className = originalClassName
-        if (originalStyle !== null) {
-          el.setAttribute('style', originalStyle)
-        } else {
-          el.removeAttribute('style')
-        }
-      })
+    try {
+      await (html2pdf() as any).set(opt as any).from(wrapper).save()
+    } finally {
+      // 4. 匯出完把暫時 DOM 刪掉，避免污染畫面
+      document.body.removeChild(wrapper)
+    }
   }
 
+  // ---------- LaTeX 編譯 ----------
+  const handleCompileLatex = async () => {
+    if (mode !== 'latex') return
 
-
-  // Call backend to compile LaTeX -> PDF, store result in blob URL (pdfURL)
-  async function handleCompileLatex() {
     setIsCompiling(true)
     setCompileError('')
     setPdfURL('')
 
     try {
-      const resp = await fetch(BACKEND_URL, {
+      const res = await fetch(BACKEND_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source: text }),
       })
 
-      if (!resp.ok) {
-        const errJson = await resp.json().catch(() => ({}))
-        throw new Error(errJson.error || 'Compile failed')
+      if (!res.ok) {
+        const msg = await res.text()
+        throw new Error(msg || `HTTP ${res.status}`)
       }
 
-      const blob = await resp.blob() // should be application/pdf
-      const objectURL = URL.createObjectURL(blob)
-      setPdfURL(objectURL)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      setPdfURL(url)
     } catch (err: any) {
-      setCompileError(err.message || String(err))
+      console.error(err)
+      setCompileError(err?.message || 'LaTeX 編譯失敗')
     } finally {
       setIsCompiling(false)
     }
   }
 
-  // (NEW) Trigger file input click
-  function handleImportClick() {
-    fileInputRef.current?.click();
-  }
-
-  // (NEW) Handle file import, read content, and set mode
-  function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const fileName = file.name;
-    const reader = new FileReader();
-
-    reader.onload = (evt) => {
-      const fileContent = evt.target?.result as string;
-      if (fileContent === null) {
-        console.error("Failed to read file: content is null");
-        setCompileError("讀取檔案失敗"); // Show error
-        return;
-      }
-
-      // Set editor text
-      setText(fileContent);
-
-      // Check extension and set mode
-      if (fileName.endsWith('.tex')) {
-        setMode('latex');
-      } else if (fileName.endsWith('.md') || fileName.endsWith('.txt')) {
-        // Default to markdown for .md and .txt
-        setMode('markdown');
-      }
-      
-      // Clear any previous errors
-      setCompileError('');
-    };
-    
-    reader.onerror = (err) => {
-      console.error("Failed to read file:", err);
-      setCompileError("讀取檔案失敗: " + String(err));
-    };
-
-    reader.readAsText(file);
-
-    // Reset the input value so selecting the same file again triggers onChange
-    if (e.target) {
-      e.target.value = '';
-    }
-  }
-
-  // -----------------------
-  // Resizable split layout
-  // -----------------------
-  const [paneWidthPercent, setPaneWidthPercent] = useState<number>(50)
-  const isDraggingRef = useRef<boolean>(false)
-
-  function handleDividerMouseDown(e: React.MouseEvent) {
-    e.preventDefault()
-    isDraggingRef.current = true
-  }
-
-  useEffect(() => {
-    function onMove(ev: MouseEvent) {
-      if (!isDraggingRef.current) return
-      const totalWidth = window.innerWidth
-      const x = ev.clientX
-      const pct = Math.min(80, Math.max(20, (x / totalWidth) * 100))
-      setPaneWidthPercent(pct)
-    }
-    function onUp() {
-      isDraggingRef.current = false
-    }
-
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-    return () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-    }
-  }, [])
-
-  const leftPaneStyle: React.CSSProperties = {
-    width: paneWidthPercent + '%',
-    minWidth: '240px',
-    maxWidth: '80%',
-  }
-
-  // -----------------------
-  // Render
-  // -----------------------
+  const leftWidth = `${splitPos}%`
+  const rightWidth = `${100 - splitPos}%`
 
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-900 text-neutral-100">
-      {/* Toolbar */}
-      <header className="flex flex-wrap items-center gap-4 px-4 py-3 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur-md">
-        <div className="flex items-center gap-2 text-neutral-300 text-sm">
-          <span className="font-medium text-neutral-100">Mode:</span>
-          <ModeToggle mode={mode} setMode={(m) => {
-            setMode(m)
-            // clear pdf preview when switching out of latex
-            if (m !== 'latex') {
-              setPdfURL('')
-              setCompileError('')
-            }
-          }} />
-        </div>
+    <div className="flex flex-col h-screen bg-neutral-950 text-neutral-100">
+      <AppHeader
+        mode={mode}
+        isCompiling={isCompiling}
+        saveStatus={saveStatus}
+        onImportClick={handleImportClick}
+        onCompileLatex={handleCompileLatex}
+        onExportSource={handleExportSource}
+        onExportPDF={handleExportPDF}
+        onManualSave={onManualSave}
+      />
 
-        <div className="flex-1" />
-        
-        {/* (NEW) Import Button */}
-        <button
-          onClick={handleImportClick}
-          className="px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-800 hover:bg-neutral-700 border border-neutral-600"
-        >
-          匯入檔案
-        </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".md,.txt,.tex"
+        className="hidden"
+        onChange={handleFileImport}
+      />
 
-        {/* (NEW) Hidden File Input */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileImport}
-          accept=".md,.tex,.txt" // 接受這三種類型
-          style={{ display: 'none' }}
+      <div
+        ref={containerRef}
+        className="flex-1 flex overflow-hidden border-t border-neutral-800"
+      >
+        <EditorPane
+          mode={mode}
+          text={text}
+          onTextChange={handleTextChange}
+          style={{ width: leftWidth }}
         />
 
-        {mode === 'latex' ? (
-          <button
-            onClick={handleCompileLatex}
-            className="px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isCompiling}
-          >
-            {isCompiling ? '編譯中…' : '編譯並預覽 (.pdf)'}
-          </button>
-        ) : null}
-
-        <button
-          onClick={handleExportSource}
-          className="px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-800 hover:bg-neutral-700 border border-neutral-600"
-        >
-          下載原始檔 ({mode === 'markdown' ? '.md' : '.tex'})
-        </button>
-
-        {mode === 'markdown' ? (
-          <button
-            onClick={handleExportPDF}
-            className="px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-100 text-neutral-900 hover:bg-white border border-neutral-300"
-          >
-            匯出 PDF
-          </button>
-        ) : null}
-      </header>
-
-      {/* Main Split Pane */}
-      <main className="flex flex-1 min-h-0 select-none">
-        {/* Editor Pane */}
-        <section
-          className="flex flex-col border-r border-neutral-800 bg-neutral-950"
-          style={leftPaneStyle}
-        >
-          <div className="px-4 py-2 text-[11px] uppercase tracking-wide text-neutral-400 border-b border-neutral-800 flex items-center justify-between">
-            <span className="font-semibold">Editor</span>
-            <span className="text-neutral-500">
-              {mode === 'markdown' ? 'Markdown' : 'LaTeX'}
-            </span>
-          </div>
-
-          <textarea
-            className="flex-1 w-full resize-none bg-neutral-950 text-neutral-100 text-sm font-mono p-4 outline-none leading-relaxed scrollbar-thin scrollbar-track-neutral-900 scrollbar-thumb-neutral-600"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            spellCheck={false}
-          />
-        </section>
-
-        {/* draggable divider */}
         <div
-          onMouseDown={handleDividerMouseDown}
-          className="w-[4px] cursor-col-resize bg-neutral-800 hover:bg-neutral-600"
-          title="拖曳以調整寬度"
+          className="w-1 cursor-col-resize bg-neutral-900 hover:bg-neutral-700 transition-colors"
+          onMouseDown={handleResizeStart}
         />
 
-        {/* Preview Pane */}
-        <section className="flex-1 flex flex-col bg-neutral-900 overflow-hidden">
-          <div className="px-4 py-2 text-[11px] uppercase tracking-wide text-neutral-400 border-b border-neutral-800 flex items-center justify-between">
-            <span className="font-semibold">Preview</span>
-            <span className="text-neutral-500">即時渲染結果</span>
-          </div>
-
-          {mode === 'markdown' ? (
-            <div
-              ref={previewRef}
-              className="flex-1 overflow-auto p-6 prose prose-invert max-w-none text-neutral-100 text-base leading-relaxed scrollbar-thin scrollbar-track-neutral-900 scrollbar-thumb-neutral-600"
-              // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{ __html: renderedHTML }}
-            />
-          ) : (
-            <div className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-track-neutral-900 scrollbar-thumb-neutral-600">
-              {compileError ? (
-                <div className="text-red-400 text-sm whitespace-pre-wrap">
-                  {/* (MODIFIED) 讓讀檔錯誤也能顯示在這裡 */}
-                  {compileError.startsWith('讀取檔案失敗') ? compileError : `編譯失敗：${compileError}`}
-                </div>
-              ) : pdfURL ? (
-                <iframe
-                  src={pdfURL}
-                  className="w-full h-full rounded-lg bg-neutral-800 border border-neutral-700"
-                  title="LaTeX PDF Preview"
-                />
-              ) : (
-                <div className="text-neutral-500 text-sm">
-                  尚未有編譯結果，請按「編譯並預覽 (.pdf)」
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-      </main>
+        <div style={{ width: rightWidth }} className="flex-1 flex">
+          <PreviewPane
+            mode={mode}
+            renderedHTML={renderedHTML}
+            pdfURL={pdfURL}
+            compileError={compileError}
+            previewRef={previewRef}
+          />
+        </div>
+      </div>
     </div>
   )
 }
 
-function ModeToggle({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
+export default function App() {
   return (
-    <div className="flex rounded-xl bg-neutral-800 border border-neutral-600 overflow-hidden text-[11px]">
-      <button
-        className={
-          'px-3 py-1.5 font-semibold ' +
-          (mode === 'markdown'
-            ? 'bg-neutral-100 text-neutral-900'
-            : 'text-neutral-300 hover:bg-neutral-700')
-        }
-        onClick={() => setMode('markdown')}
-      >
-        Markdown
-      </button>
+    <BrowserRouter>
+      <Routes>
+        {/* 首頁先導到 /login */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
-      <button
-        className={
-          'px-3 py-1.5 font-semibold border-l border-neutral-600 ' +
-          (mode === 'latex'
-            ? 'bg-neutral-100 text-neutral-900'
-            : 'text-neutral-300 hover:bg-neutral-700')
-        }
-        onClick={() => setMode('latex')}
-      >
-        LaTeX
-      </button>
-    </div>
+        {/* Auth */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+
+        {/* 專案列表 */}
+        <Route path="/projects" element={<ProjectListPage />} />
+
+        {/* 不同編輯器 */}
+        <Route path="/editor/md/:id" element={<MarkdownEditorPage />} />
+        <Route path="/editor/tex/:id" element={<LatexEditorPage />} />
+
+        {/* 兜底：亂打路徑導回登入 */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }

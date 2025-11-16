@@ -81,6 +81,26 @@
   color: #111827 !important;
 }
 
+/* 避免文字被切半 */
+.pdf-export p,
+.pdf-export h1,
+.pdf-export h2,
+.pdf-export h3,
+.pdf-export h4,
+.pdf-export h5,
+.pdf-export h6,
+.pdf-export li,
+.pdf-export blockquote,
+.pdf-export pre,
+.pdf-export code,
+.pdf-export table,
+.pdf-export tr,
+.pdf-export td,
+.pdf-export th {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
 /* PDF 中的 code block（```...```）統一樣式 */
 .pdf-export pre {
   background-color: #111827 !important;
@@ -158,4 +178,15 @@
 }
 .prose pre:has(> code.language-bash) {
   background-color: #000000;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;        /* 關掉整個頁面的滾動 */
 }
