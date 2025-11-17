@@ -53,6 +53,12 @@ function resolveBackendURL() {
 
 const BACKEND_URL = resolveBackendURL()
 
+type AddFilePromptHandler = (docType: Mode) => Promise<string | null>
+type AddFilePromptState = {
+  docType: Mode
+  defaultValue: string
+}
+
 
 // ===================================================================
 // (MERGED) EditorCore - 這是新的「大腦」
@@ -99,7 +105,6 @@ export function EditorCore({
   const containerRef = useRef<HTMLDivElement | null>(null)
   
   const previewRef = useRef<HTMLDivElement | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const editorRef = useRef<HTMLTextAreaElement | null>(null) 
   
   const isEditorScrolling = useRef(false);
@@ -641,36 +646,6 @@ export function EditorCore({
     onContentChange?.(newText)
   }
 
-  // ---------- Import .md / .tex (組員的原始碼) ----------
-  const handleImportClick = () => {
-    fileInputRef.current?.click()
-  }
-  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const fileName = file.name.toLowerCase()
-    const reader = new FileReader()
-    reader.onload = (evt) => {
-      const fileContent = evt.target?.result as string | null
-      if (fileContent == null) {
-        console.error('Failed to read file: content is null')
-        setCompileError('讀取檔案失敗：內容為空')
-        return
-      }
-      setText(fileContent)
-      onContentChange?.(fileContent)
-      setCompileError('')
-    }
-    reader.onerror = (err) => {
-      console.error('File read error:', err)
-      setCompileError('讀取檔案失敗')
-    }
-    reader.readAsText(file, 'utf-8')
-    if (e.target) {
-      e.target.value = '';
-    }
-  }
-
   // ---------- 匯出原始檔 (組員的原始碼) ----------
   const handleExportSource = () => {
     const ext = mode === 'latex' ? 'tex' : 'md'
@@ -757,7 +732,6 @@ export function EditorCore({
           mode={mode}
           isCompiling={isCompiling}
           saveStatus={saveStatus}
-          onImportClick={handleImportClick}
           onCompileLatex={handleCompileLatex}
           onExportSource={handleExportSource}
           onExportPDF={handleExportPDF}
@@ -793,14 +767,6 @@ export function EditorCore({
           onCreate={handleCreateMatrix}
         />
       </div>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".md,.txt,.tex"
-        className="hidden non-printable" // (FIXED) 加上 non-printable
-        onChange={handleFileImport}
-      />
 
       {/* (NEW) 頂部水平工具列 */}
       <div className="flex flex-wrap items-center gap-2 p-3 border-b border-neutral-800 bg-neutral-950/80 non-printable"> {/* (FIXED) 加上 non-printable */}
@@ -873,7 +839,11 @@ export function EditorCore({
 // ===================================================================
 
 // (CHANGED) 輔助元件，用於提供 useLocation 的 context
-function AppRouterWrapper() {
+type AppRouterWrapperProps = {
+  openAddFilePrompt: AddFilePromptHandler
+}
+
+function AppRouterWrapper({ openAddFilePrompt }: AppRouterWrapperProps) {
   const location = useLocation(); // (NEW) 取得 location 物件
 
   // (NEW) 每次路由變化時，捲動到頂部 (修復 BFCache)
@@ -892,7 +862,10 @@ function AppRouterWrapper() {
       <Route path="/signup" element={<SignupPage />} />
 
       {/* 專案列表 */}
-      <Route path="/projects" element={<ProjectListPage />} />
+      <Route
+        path="/projects"
+        element={<ProjectListPage openAddFilePrompt={openAddFilePrompt} />}
+      />
 
       {/* 不同編輯器 */}
       <Route path="/editor/md/:id" element={<MarkdownEditorPage />} />
@@ -906,9 +879,106 @@ function AppRouterWrapper() {
 
 // (CHANGED) 導出預設元件，只負責提供 <BrowserRouter>
 export default function App() {
+  const [promptState, setPromptState] = useState<AddFilePromptState | null>(null)
+  const [promptValue, setPromptValue] = useState('')
+  const resolverRef = useRef<((value: string | null) => void) | null>(null)
+
+  const closePrompt = (result: string | null) => {
+    const resolver = resolverRef.current
+    resolverRef.current = null
+    setPromptState(null)
+    setPromptValue('')
+    if (resolver) {
+      resolver(result)
+    }
+  }
+
+  const openAddFilePrompt: AddFilePromptHandler = (docType) => {
+    const defaultValue =
+      docType === 'markdown' ? '未命名(md)文檔' : '未命名(tex)文檔'
+    if (resolverRef.current) {
+      resolverRef.current(null)
+    }
+    return new Promise<string | null>((resolve) => {
+      resolverRef.current = resolve
+      setPromptState({ docType, defaultValue })
+      setPromptValue(defaultValue)
+    })
+  }
+
+  const handlePromptConfirm = () => {
+    if (!promptState) return
+    const trimmed = promptValue.trim() || promptState.defaultValue
+    closePrompt(trimmed)
+  }
+
+  const handlePromptCancel = () => {
+    closePrompt(null)
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      handlePromptConfirm()
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      handlePromptCancel()
+    }
+  }
+
+  const promptDescription =
+    promptState?.docType === 'markdown' ? '.md' : '.tex'
+
   return (
-    <BrowserRouter>
-      <AppRouterWrapper />
-    </BrowserRouter>
+    <>
+      <BrowserRouter>
+        <AppRouterWrapper openAddFilePrompt={openAddFilePrompt} />
+      </BrowserRouter>
+
+      {promptState && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4"
+          onClick={handlePromptCancel}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-neutral-900 border border-neutral-700 p-5 text-neutral-100 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold mb-2">
+              {promptState.docType === 'markdown'
+                ? '新增 Markdown 檔案'
+                : '新增 LaTeX 檔案'}
+            </h2>
+            <p className="text-xs text-neutral-400 mb-4">
+              請輸入新檔案名稱，系統會自動加上 {promptDescription} 副檔名。
+            </p>
+            <label className="text-[11px] uppercase tracking-wide text-neutral-500 mb-1 block">
+              File name
+            </label>
+            <input
+              autoFocus
+              value={promptValue}
+              onChange={(e) => setPromptValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-neutral-300"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={handlePromptCancel}
+                className="px-3 py-1.5 rounded-full border border-neutral-700 text-xs text-neutral-200 hover:bg-neutral-800"
+              >
+                取消
+              </button>
+              <button
+                onClick={handlePromptConfirm}
+                className="px-3 py-1.5 rounded-full bg-neutral-100 text-neutral-900 text-xs font-semibold hover:bg-white"
+              >
+                建立
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
