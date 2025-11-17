@@ -47,7 +47,7 @@ docker run --rm -p 3001:3001 latex-backend
 cd frontend
 npm install
 npm install @supabase/supabase-js
-npm install html2pdf.js
+npm install mermaid
 npm run dev
 ```
 

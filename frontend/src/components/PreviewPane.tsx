@@ -11,7 +11,7 @@ interface Props {
   mode: Mode
   renderedHTML: string
   pdfURL: string
-  compileError: string
+  errorLog: string
   previewRef: React.RefObject<HTMLDivElement>
   // onScroll: (e: React.UIEvent<HTMLDivElement>) => void // (REMOVED)
 }
@@ -20,7 +20,7 @@ export default function PreviewPane({
   mode,
   renderedHTML,
   pdfURL,
-  compileError,
+  errorLog,
   previewRef,
   // onScroll, // (REMOVED)
 }: Props) {
@@ -48,9 +48,14 @@ export default function PreviewPane({
           className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-track-neutral-900 scrollbar-thumb-neutral-600"
           // onScroll={onScroll} // (REMOVED) 移除 LaTeX 滾動
         >
-          {compileError ? (
-            <div className="text-red-400 text-sm whitespace-pre-wrap">
-              {compileError.startsWith('讀取檔案失敗') ? compileError : `編譯失敗：${compileError}`}
+          {errorLog ? (
+            <div className="h-full flex flex-col rounded-lg border border-red-700 bg-red-950/40 text-red-200">
+              <div className="px-4 py-2 border-b border-red-800 text-xs font-semibold uppercase tracking-wide">
+                Compilation Error
+              </div>
+              <pre className="flex-1 overflow-auto px-4 py-3 text-xs font-mono whitespace-pre-wrap leading-relaxed">
+                {errorLog}
+              </pre>
             </div>
           ) : pdfURL ? (
             <iframe

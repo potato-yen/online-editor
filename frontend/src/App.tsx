@@ -100,7 +100,7 @@ export function EditorCore({
   const [text, setText] = useState<string>(() => initialText ?? defaultText)
   const [renderedHTML, setRenderedHTML] = useState<string>('')
   const [pdfURL, setPdfURL] = useState<string>('')
-  const [compileError, setCompileError] = useState<string>('')
+  const [compileErrorLog, setCompileErrorLog] = useState<string>('')
   const [isCompiling, setIsCompiling] = useState(false)
 
   const [splitPos, setSplitPos] = useState(50)
@@ -695,7 +695,7 @@ export function EditorCore({
   const handleCompileLatex = async () => {
     if (mode !== 'latex') return
     setIsCompiling(true)
-    setCompileError('')
+    setCompileErrorLog('')
     setPdfURL('')
     try {
       const res = await fetch(BACKEND_URL, {
@@ -703,16 +703,29 @@ export function EditorCore({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source: text }),
       })
-      if (!res.ok) {
-        const msg = await res.text()
-        throw new Error(msg || `HTTP ${res.status}`)
+      const data = await res.json()
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid response from compile server')
       }
-      const blob = await res.blob()
+      if (!data.success) {
+        setCompileErrorLog(data.errorLog || data.error || 'LaTeX 編譯失敗')
+        return
+      }
+      if (!data.pdfBase64 || typeof data.pdfBase64 !== 'string') {
+        throw new Error('PDF 資料缺失')
+      }
+      const byteCharacters = window.atob(data.pdfBase64)
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i += 1) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      const byteArray = new Uint8Array(byteNumbers)
+      const blob = new Blob([byteArray], { type: 'application/pdf' })
       const url = URL.createObjectURL(blob)
       setPdfURL(url)
     } catch (err: any) {
       console.error(err)
-      setCompileError(err?.message || 'LaTeX 編譯失敗')
+      setCompileErrorLog(err?.message || 'LaTeX 編譯失敗')
     } finally {
       setIsCompiling(false)
     }
@@ -845,7 +858,7 @@ export function EditorCore({
             mode={mode}
             renderedHTML={renderedHTML}
             pdfURL={pdfURL}
-            compileError={compileError}
+            errorLog={compileErrorLog}
             previewRef={previewRef}
           />
         </div>
