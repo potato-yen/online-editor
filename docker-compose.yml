@@ -40,7 +40,7 @@ services:
       # 覆寫我們在步驟 1 新增的變數
       # 'backend' 是此 docker-compose 檔案中定義的服務名稱
       # Docker 的內部 DNS 會將 'backend' 解析到後端容器的 IP
-      VITE_BACKEND_URL: http://backend:3001/compile-latex
+      VITE_BACKEND_URL: http://localhost:3001/compile-latex
     networks:
       - editor-net
     # 確保後端服務先啟動

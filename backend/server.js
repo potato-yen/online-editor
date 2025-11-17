@@ -37,20 +37,20 @@ const { execFile } = require('child_process');
 //
 
 // ---- 用 tectonic 的版本 ----
-const LATEX_CMD = 'tectonic';
-const LATEX_ARGS = [
-  'main.tex',
-  '--outfmt',
-  'pdf'
-];
+//const LATEX_CMD = 'tectonic';
+//const LATEX_ARGS = [
+//  'main.tex',
+//  '--outfmt',
+//  'pdf'
+//];
 
 // ---- 如果你想用 pdflatex，請改成這樣： ----
-// const LATEX_CMD = 'pdflatex';
-// const LATEX_ARGS = [
-//   '-interaction=nonstopmode', // 不要互動停下來
-//   '-halt-on-error',           // 出錯就停
-//   'main.tex'
-// ];
+const LATEX_CMD = 'pdflatex';
+const LATEX_ARGS = [
+   '-interaction=nonstopmode', // 不要互動停下來
+   '-halt-on-error',           // 出錯就停
+   'main.tex'
+];
 //
 // 然後記得重新啟動後端 `npm start`
 
