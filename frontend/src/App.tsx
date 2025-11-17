@@ -53,6 +53,15 @@ function resolveBackendURL() {
 
 const BACKEND_URL = resolveBackendURL()
 
+declare global {
+  interface Window {
+    mermaid?: {
+      initialize: (config: Record<string, unknown>) => void
+      init: (config?: Record<string, unknown>, nodes?: Element | NodeListOf<Element> | string) => void
+    }
+  }
+}
+
 type AddFilePromptHandler = (docType: Mode) => Promise<string | null>
 type AddFilePromptState = {
   docType: Mode
@@ -154,6 +163,17 @@ export function EditorCore({
       isAtBottomRef.current = false;
     }
   }, [renderedHTML, mode]); 
+
+  useEffect(() => {
+    if (mode !== 'markdown') return
+    const target = previewRef.current
+    if (!target || !window.mermaid || typeof window.mermaid.init !== 'function') return
+    try {
+      window.mermaid.init(undefined, target.querySelectorAll('.mermaid'))
+    } catch (err) {
+      console.error('Mermaid render error:', err)
+    }
+  }, [renderedHTML, mode])
 
 
   // ===================================================================
