@@ -7,7 +7,6 @@ type Props = {
   mode: Mode
   isCompiling: boolean
   saveStatus?: SaveStatus
-  onImportClick: () => void
   onCompileLatex: () => void
   onExportSource: () => void
   onExportPDF: () => void
@@ -20,7 +19,6 @@ export default function AppHeader({
   mode,
   isCompiling,
   saveStatus = 'idle',
-  onImportClick,
   onCompileLatex,
   onExportSource,
   onExportPDF,
@@ -69,10 +67,6 @@ export default function AppHeader({
             className={`${baseBtn} disabled:opacity-60 disabled:cursor-not-allowed`}
           >
             Save
-          </button>
-
-          <button onClick={onImportClick} className={baseBtn}>
-            Import
           </button>
 
           {mode === 'latex' && (

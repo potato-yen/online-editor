@@ -1,6 +1,6 @@
 // src/pages/ProjectListPage.tsx
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import type { Mode } from '../types'
@@ -16,19 +16,29 @@ type DocumentRow = {
   updated_at: string
 }
 
+type CreateDocOptions = {
+  docType: DocType
+  title?: string
+  content?: string
+}
+
+type ProjectListPageProps = {
+  openAddFilePrompt: (docType: DocType) => Promise<string | null>
+}
+
 const MAX_DOCS = 10
 
-export default function ProjectListPage() {
+export default function ProjectListPage({
+  openAddFilePrompt,
+}: ProjectListPageProps) {
   const navigate = useNavigate()
 
   const [user, setUser] = useState<any>(null)
   const [docs, setDocs] = useState<DocumentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
-
-  // 新增用
-  const [newTitle, setNewTitle] = useState('')
-  const [newDocType, setNewDocType] = useState<DocType>('markdown')
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // 每列的 ⋮ menu
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -87,8 +97,8 @@ export default function ProjectListPage() {
     }
   }
 
-  // 建立新文檔
-  const createDoc = async () => {
+  // 建立新文檔或從檔案匯入
+  const createDoc = async ({ docType, title, content }: CreateDocOptions) => {
     if (!user) {
       alert('請先登入才能建立文檔')
       return
@@ -99,16 +109,16 @@ export default function ProjectListPage() {
       return
     }
 
-    const docType = newDocType
     const now = new Date().toISOString()
-    const title =
-      newTitle.trim() ||
+    const resolvedTitle =
+      title?.trim() ||
       (docType === 'markdown' ? '未命名 Markdown 文檔' : '未命名 LaTeX 文檔')
-
-    const content =
-      docType === 'markdown'
-        ? '# 新的 Markdown 文檔\n'
-        : '% 新的 LaTeX 文檔\n'
+    const resolvedContent =
+      typeof content === 'string'
+        ? content
+        : docType === 'markdown'
+          ? '# 新的 Markdown 文檔\n'
+          : '% 新的 LaTeX 文檔\n'
 
     setCreating(true)
 
@@ -116,8 +126,8 @@ export default function ProjectListPage() {
       .from('documents')
       .insert({
         user_id: user.id,
-        title,
-        content,
+        title: resolvedTitle,
+        content: resolvedContent,
         doc_type: docType,
         created_at: now,
         updated_at: now,
@@ -133,19 +143,65 @@ export default function ProjectListPage() {
       return
     }
 
-    setNewTitle('')
-
     setDocs((prev) =>
       [data as DocumentRow, ...prev].sort((a, b) =>
         a.updated_at < b.updated_at ? 1 : -1,
       ),
     )
 
-    if (docType === 'markdown') {
-      navigate(`/editor/md/${data.id}`)
-    } else {
-      navigate(`/editor/tex/${data.id}`)
+    navigate(
+      docType === 'markdown'
+        ? `/editor/md/${data.id}`
+        : `/editor/tex/${data.id}`,
+    )
+  }
+
+  const handleAddDoc = async (docType: DocType) => {
+    if (!canCreateMore || creating) return
+    setAddMenuOpen(false)
+    const name = await openAddFilePrompt(docType)
+    if (!name) return
+    const suffix = docType === 'markdown' ? '.md' : '.tex'
+    const normalized = name.toLowerCase().endsWith(suffix)
+      ? name
+      : `${name}${suffix}`
+    await createDoc({ docType, title: normalized })
+  }
+
+  const triggerFilePicker = () => {
+    if (!canCreateMore || creating) return
+    setAddMenuOpen(false)
+    fileInputRef.current?.click()
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async (evt) => {
+      const fileContent = evt.target?.result
+      if (typeof fileContent !== 'string') {
+        alert('讀取檔案失敗')
+        return
+      }
+
+      const lowerName = file.name.toLowerCase()
+      const docType: DocType = lowerName.endsWith('.tex') ? 'latex' : 'markdown'
+      const baseTitle = file.name.replace(/\.[^/.]+$/, '').trim()
+      const title =
+        baseTitle ||
+        (docType === 'markdown' ? 'Imported Markdown 文檔' : 'Imported LaTeX 文檔')
+
+      await createDoc({ docType, title, content: fileContent })
     }
+
+    reader.onerror = () => {
+      alert('讀取檔案失敗')
+    }
+
+    reader.readAsText(file, 'utf-8')
+    e.target.value = ''
   }
 
   // 重新命名
@@ -224,6 +280,7 @@ export default function ProjectListPage() {
       onClick={() => {
         setOpenMenuId(null)
         setUserMenuOpen(false)
+        setAddMenuOpen(false)
       }}
     >
       <header className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
@@ -234,7 +291,7 @@ export default function ProjectListPage() {
           </p>
         </div>
 
-        {/* 右側：新建文檔表單 + 使用者頭像 */}
+        {/* 右側：新增文檔按鈕 + 使用者頭像 */}
         <div className="flex items-center gap-4">
           <div
             className="flex items-center gap-2"
@@ -246,30 +303,46 @@ export default function ProjectListPage() {
               </span>
             )}
 
-            <input
-              type="text"
-              placeholder="新文檔名稱..."
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              className="text-xs px-3 py-1.5 rounded-full bg-neutral-900 border border-neutral-700 text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-neutral-300"
-            />
+            <div className="relative">
+              <button
+                onClick={() =>
+                  setAddMenuOpen((open) =>
+                    !canCreateMore || creating ? open : !open,
+                  )
+                }
+                disabled={!canCreateMore || creating}
+                className="px-4 py-2 rounded-full bg-neutral-100 text-neutral-900 text-xs font-semibold border border-neutral-300 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                + add
+              </button>
 
-            <select
-              value={newDocType}
-              onChange={(e) => setNewDocType(e.target.value as DocType)}
-              className="text-xs px-3 py-1.5 rounded-full bg-neutral-900 border border-neutral-700 text-neutral-100 outline-none focus:border-neutral-300"
-            >
-              <option value="markdown">Markdown</option>
-              <option value="latex">LaTeX</option>
-            </select>
-
-            <button
-              onClick={createDoc}
-              disabled={!canCreateMore || creating}
-              className="px-3 py-1.5 rounded-full bg-neutral-100 text-neutral-900 text-xs border border-neutral-300 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {creating ? 'Creating…' : 'Create'}
-            </button>
+              {addMenuOpen && (
+                <div className="absolute right-0 mt-2 w-36 rounded-md bg-neutral-900 border border-neutral-700 shadow-lg z-20 text-xs overflow-hidden">
+                  <button
+                    className="w-full text-left px-3 py-2 hover:bg-neutral-800"
+                    onClick={triggerFilePicker}
+                  >
+                    Import file
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 hover:bg-neutral-800"
+                    onClick={() => {
+                      void handleAddDoc('markdown')
+                    }}
+                  >
+                    Add .md
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 hover:bg-neutral-800"
+                    onClick={() => {
+                      void handleAddDoc('latex')
+                    }}
+                  >
+                    Add .tex
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 使用者頭像按鈕 */}
@@ -306,12 +379,20 @@ export default function ProjectListPage() {
         </div>
       </header>
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".md,.tex,.txt"
+        className="hidden"
+        onChange={handleFileInputChange}
+      />
+
       <main className="flex-1 overflow-auto px-6 py-4">
         {loading ? (
           <div className="text-neutral-400">載入中…</div>
         ) : docs.length === 0 ? (
           <div className="text-neutral-500">
-            目前沒有任何文檔，先在右上角輸入名稱並選擇類型來建立一個吧。
+            目前沒有任何文檔，點擊右上角的 + add 按鈕來新增或匯入吧。
           </div>
         ) : (
           <table className="w-full text-sm border-collapse">
