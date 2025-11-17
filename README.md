@@ -21,26 +21,54 @@
 ## 啟動流程（開發狀態）
 
 ### 1. 啟動後端
+
 ```bash
 cd backend
 npm install
 npm start
 ```
+
+<details>
+<summary><strong>以 Docker 啟動後端</strong></summary>
+
+```bash
+cd backend
+docker build --no-cache -t latex-backend .
+docker run --rm -p 3001:3001 latex-backend
+```
+
+</details>
+
 這會在 http://localhost:3001 開一個 `/compile-latex` API。
 
 ### 2. 啟動前端
+
 ```bash
-cd ../frontend
+cd frontend
 npm install
 npm install @supabase/supabase-js
 npm install html2pdf.js
 npm run dev
 ```
-請自行修改.env.example為.env
+
+<details>
+<summary><strong>以 Docker 啟動前端</strong></summary>
+
+```bash
+cd frontend
+docker build --no-cache -t latex-frontend .
+docker run --rm -p 5173:5173 latex-frontend
+```
+
+</details>
+
+請自行修改 `.env.example` 為 `.env`
+
 ```bash
 VITE_SUPABASE_URL=your-supabase-url-here
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
+
 Vite 預設在 http://localhost:5173
 
 ### 3. 使用
@@ -93,3 +121,4 @@ brew install basictex
 ## 注意事項
 - 這個後端在現在的型態下**不適合直接丟到公開網路**。  
   要上線必須把每次編譯放進 sandbox (例如 Docker 容器) 並做資源限制，避免惡意 .tex 造成安全風險或當機。
+

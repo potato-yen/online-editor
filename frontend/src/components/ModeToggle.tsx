@@ -2,7 +2,7 @@
 // (NEW) - Extracted component
 
 import React from 'react'
-import { Mode } from '../App' // Import the type from App.tsx
+import type { Mode } from '../types' // Import the shared type
 
 interface Props {
   mode: Mode
