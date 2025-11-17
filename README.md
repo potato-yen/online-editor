@@ -112,7 +112,7 @@ sudo apt-get install texlive-fonts-extra
 brew install basictex
 ```
 ##### Windows
-請參考 MiKTeX
+請參考 [MiKTeX](https://miktex.org/download)
 
 </details>
 
