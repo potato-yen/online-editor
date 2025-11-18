@@ -10,6 +10,18 @@ import rehypeRaw from 'rehype-raw'
 import rehypeHighlight from 'rehype-highlight' // (NEW) 匯入語法高亮外掛
 import { visit } from 'unist-util-visit'
 
+const wrapMermaidBlocks = () => (tree: any) => {
+  visit(tree, 'code', (node: any, index: number | null, parent: any) => {
+    if (!parent || typeof index !== 'number') return
+    if (node.lang === 'mermaid') {
+      parent.children[index] = {
+        type: 'html',
+        value: `<div class="mermaid">\n${node.value}\n</div>`,
+      }
+    }
+  })
+}
+
 /**
  * (Original) 這是一個 'rehype' 外掛
  * 它會遍歷(visit)所有 HTML 元素 (element)
@@ -62,6 +74,7 @@ export async function renderMarkdownToHTML(markdown: string): Promise<string> {
     .use(remarkGfm)  // 2. 支援 GFM (表格, 刪除線等)
     .use(remarkBreaks) // 3. 告訴 remark 把單次換行轉成 <br>
     .use(remarkMath) // 4. 啟用 $...$ 和 $$...$$ 數學語法解析
+    .use(wrapMermaidBlocks) // 4.5 處理 mermaid 程式碼區塊
     .use(remarkRehype, { allowDangerousHtml: true }) // 5. 轉成 HTML (hast)
     .use(rehypeKatex) // 6. (FIXED) 先處理 KaTeX 數學公式
     .use(rehypeRaw)  // 7. (FIXED) 再處理 Markdown 中的 <raw_html>

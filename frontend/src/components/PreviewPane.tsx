@@ -1,7 +1,7 @@
 // src/components/PreviewPane.tsx
 // (NEW) - Right pane preview
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import type { Mode } from '../types'
 
 // ===================================================================
@@ -11,7 +11,7 @@ interface Props {
   mode: Mode
   renderedHTML: string
   pdfURL: string
-  compileError: string
+  errorLog: string
   previewRef: React.RefObject<HTMLDivElement>
   // onScroll: (e: React.UIEvent<HTMLDivElement>) => void // (REMOVED)
 }
@@ -20,10 +20,77 @@ export default function PreviewPane({
   mode,
   renderedHTML,
   pdfURL,
-  compileError,
+  errorLog,
   previewRef,
   // onScroll, // (REMOVED)
 }: Props) {
+  const [errorCopied, setErrorCopied] = useState(false)
+
+  useEffect(() => {
+    if (mode !== 'markdown') return
+    const container = previewRef.current
+    if (!container) return
+
+    const preBlocks = Array.from(container.querySelectorAll('pre'))
+    const cleanups: Array<() => void> = []
+
+    preBlocks.forEach((pre) => {
+      pre.classList.add('code-block-with-copy')
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = 'copy-button copy-button--code'
+      button.textContent = 'Copy'
+
+      const handleClick = async (event: MouseEvent) => {
+        event.stopPropagation()
+        const codeEl = pre.querySelector('code')
+        const text = codeEl?.textContent ?? pre.textContent ?? ''
+        if (!text.trim() || !navigator.clipboard?.writeText) {
+          return
+        }
+        try {
+          await navigator.clipboard.writeText(text)
+          button.textContent = 'Copied'
+          button.classList.add('copy-button--copied')
+          window.setTimeout(() => {
+            button.textContent = 'Copy'
+            button.classList.remove('copy-button--copied')
+          }, 1400)
+        } catch (copyErr) {
+          console.error('Copy failed:', copyErr)
+          button.textContent = 'Failed'
+          window.setTimeout(() => {
+            button.textContent = 'Copy'
+          }, 1400)
+        }
+      }
+
+      button.addEventListener('click', handleClick)
+      pre.appendChild(button)
+
+      cleanups.push(() => {
+        button.removeEventListener('click', handleClick)
+        button.remove()
+        pre.classList.remove('code-block-with-copy')
+      })
+    })
+
+    return () => {
+      cleanups.forEach((fn) => fn())
+    }
+  }, [mode, renderedHTML, previewRef])
+
+  const handleCopyErrorLog = async () => {
+    if (!errorLog || !navigator.clipboard?.writeText) return
+    try {
+      await navigator.clipboard.writeText(errorLog)
+      setErrorCopied(true)
+      window.setTimeout(() => setErrorCopied(false), 1400)
+    } catch (err) {
+      console.error('Copy error log failed:', err)
+    }
+  }
+
   return (
     <section className="flex-1 flex flex-col bg-neutral-900 overflow-hidden">
       
@@ -48,9 +115,21 @@ export default function PreviewPane({
           className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-track-neutral-900 scrollbar-thumb-neutral-600"
           // onScroll={onScroll} // (REMOVED) 移除 LaTeX 滾動
         >
-          {compileError ? (
-            <div className="text-red-400 text-sm whitespace-pre-wrap">
-              {compileError.startsWith('讀取檔案失敗') ? compileError : `編譯失敗：${compileError}`}
+          {errorLog ? (
+            <div className="h-full flex flex-col rounded-lg border border-red-700 bg-red-950/40 text-red-200">
+              <div className="px-4 py-2 border-b border-red-800 text-xs font-semibold uppercase tracking-wide flex items-center justify-between gap-4">
+                <span>Compilation Error</span>
+                <button
+                  type="button"
+                  className="copy-button copy-button--error"
+                  onClick={handleCopyErrorLog}
+                >
+                  {errorCopied ? 'Copied' : 'Copy error'}
+                </button>
+              </div>
+              <pre className="flex-1 overflow-auto px-4 py-3 text-xs font-mono whitespace-pre-wrap leading-relaxed">
+                {errorLog}
+              </pre>
             </div>
           ) : pdfURL ? (
             <iframe

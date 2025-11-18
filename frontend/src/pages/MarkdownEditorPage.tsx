@@ -84,6 +84,7 @@ export default function MarkdownEditorPage() {
       setSaveStatus('error')
     } else {
       setSaveStatus('saved')
+      setPendingText(null)
       setDoc((prev) =>
         prev ? { ...prev, content: text, updated_at: now } : prev,
       )
@@ -136,6 +137,7 @@ export default function MarkdownEditorPage() {
     <EditorCore
       initialMode="markdown"
       initialText={doc.content}
+      title={doc.title}
       saveStatus={saveStatus}
       onContentChange={handleContentChange}
       onManualSave={handleManualSave}

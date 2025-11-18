@@ -6,8 +6,8 @@
  *   body: { "source": "<full .tex source>" }
  *
  * Response:
- *   - success: returns application/pdf (the compiled PDF buffer)
- *   - failure: { error: "...", detail: "..." }
+ *   - success: { success: true, pdfBase64: "<base64 PDF buffer>" }
+ *   - failure: { success: false, errorLog: "...", errorLines: [23, 45, ...] }
  *
  * IMPORTANT:
  * - This version runs a LaTeX engine directly on the host machine.
@@ -73,18 +73,67 @@ function runLatexOnce(workDir, timeoutMs = 8000) {
       },
       (error, stdout, stderr) => {
         if (error) {
-          // 把 latex 的 stdout/stderr 一起包回去，方便 debug
-          reject(
-            new Error(
-              `latex error: ${error}\nstdout:\n${stdout}\nstderr:\n${stderr}`
-            )
-          );
+          // 回傳詳細資訊讓呼叫端自行組裝錯誤訊息
+          reject({ error, stdout, stderr });
         } else {
           resolve({ stdout, stderr });
         }
       }
     );
   });
+}
+
+function formatLatexErrorLog(info) {
+  if (!info || typeof info !== 'object') {
+    return 'Unknown LaTeX error';
+  }
+
+  const chunks = [];
+  if (info.stdout && info.stdout.trim()) {
+    chunks.push(`STDOUT:\n${info.stdout.trim()}`);
+  }
+  if (info.stderr && info.stderr.trim()) {
+    chunks.push(`STDERR:\n${info.stderr.trim()}`);
+  }
+  if (!chunks.length && info.error) {
+    chunks.push(String(info.error));
+  }
+
+  return chunks.join('\n\n') || 'Unknown LaTeX error';
+}
+
+function extractLatexErrorLines(info) {
+  if (!info || typeof info !== 'object') {
+    return [];
+  }
+
+  const lineNumbers = new Set();
+  const pattern = /l\.\s*(\d+)/gi;
+
+  function scan(text) {
+    if (typeof text !== 'string') return;
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const line = Number(match[1]);
+      if (!Number.isNaN(line)) {
+        lineNumbers.add(line);
+      }
+    }
+  }
+
+  scan(info.stdout);
+  scan(info.stderr);
+
+  if (info.error) {
+    if (typeof info.error === 'string') {
+      scan(info.error);
+    } else {
+      scan(info.error.message);
+      scan(info.error.stack);
+    }
+  }
+
+  return Array.from(lineNumbers).sort((a, b) => a - b);
 }
 
 // ---------------------------
@@ -107,8 +156,9 @@ app.use(express.json({ limit: '1mb' }));
 //     "source": "\\documentclass{article}\\begin{document}Hello\\end{document}"
 //   }
 //
-// 回傳：PDF 二進位（Content-Type: application/pdf）
-// 或是 { error: "...", detail: "..." } (JSON)
+// 回傳 JSON：
+//   成功：{ success: true, pdfBase64: "..." }
+//   失敗：{ success: false, errorLog: "...", errorLines: [...] }
 //
 app.post('/compile-latex', async (req, res) => {
   try {
@@ -152,9 +202,12 @@ app.post('/compile-latex', async (req, res) => {
         fs.rmSync(workDir, { recursive: true, force: true });
       } catch (_) {}
 
+      const errorLog = formatLatexErrorLog(e);
+      const errorLines = extractLatexErrorLines(e);
+
       return res
-        .status(500)
-        .json({ error: 'Compilation failed', detail: String(e) });
+        .status(200)
+        .json({ success: false, errorLog, errorLines });
     }
 
     // ---------------------------
@@ -178,10 +231,8 @@ app.post('/compile-latex', async (req, res) => {
     // ---------------------------
     // 4. 回傳 PDF 給前端
     // ---------------------------
-    // 我們用 inline; 前端會拿 blob 顯示在 iframe
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'inline; filename="output.pdf"');
-    res.send(pdfBuf);
+    const pdfBase64 = pdfBuf.toString('base64');
+    res.json({ success: true, pdfBase64 });
 
     // ---------------------------
     // 5. 清理暫存

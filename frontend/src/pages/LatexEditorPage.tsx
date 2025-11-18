@@ -81,6 +81,7 @@ export default function LatexEditorPage() {
       setSaveStatus('error')
     } else {
       setSaveStatus('saved')
+      setPendingText(null)
       setDoc((prev) =>
         prev ? { ...prev, content: text, updated_at: now } : prev,
       )
@@ -131,6 +132,7 @@ export default function LatexEditorPage() {
     <EditorCore
       initialMode="latex"
       initialText={doc.content}
+      title={doc.title}
       saveStatus={saveStatus}
       onContentChange={handleContentChange}
       onManualSave={handleManualSave}
