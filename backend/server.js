@@ -7,7 +7,7 @@
  *
  * Response:
  *   - success: { success: true, pdfBase64: "<base64 PDF buffer>" }
- *   - failure: { success: false, errorLog: "..." }
+ *   - failure: { success: false, errorLog: "...", errorLines: [23, 45, ...] }
  *
  * IMPORTANT:
  * - This version runs a LaTeX engine directly on the host machine.
@@ -102,6 +102,40 @@ function formatLatexErrorLog(info) {
   return chunks.join('\n\n') || 'Unknown LaTeX error';
 }
 
+function extractLatexErrorLines(info) {
+  if (!info || typeof info !== 'object') {
+    return [];
+  }
+
+  const lineNumbers = new Set();
+  const pattern = /l\.\s*(\d+)/gi;
+
+  function scan(text) {
+    if (typeof text !== 'string') return;
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const line = Number(match[1]);
+      if (!Number.isNaN(line)) {
+        lineNumbers.add(line);
+      }
+    }
+  }
+
+  scan(info.stdout);
+  scan(info.stderr);
+
+  if (info.error) {
+    if (typeof info.error === 'string') {
+      scan(info.error);
+    } else {
+      scan(info.error.message);
+      scan(info.error.stack);
+    }
+  }
+
+  return Array.from(lineNumbers).sort((a, b) => a - b);
+}
+
 // ---------------------------
 // 建立 Express app
 // ---------------------------
@@ -124,7 +158,7 @@ app.use(express.json({ limit: '1mb' }));
 //
 // 回傳 JSON：
 //   成功：{ success: true, pdfBase64: "..." }
-//   失敗：{ success: false, errorLog: "..." }
+//   失敗：{ success: false, errorLog: "...", errorLines: [...] }
 //
 app.post('/compile-latex', async (req, res) => {
   try {
@@ -169,10 +203,11 @@ app.post('/compile-latex', async (req, res) => {
       } catch (_) {}
 
       const errorLog = formatLatexErrorLog(e);
+      const errorLines = extractLatexErrorLines(e);
 
       return res
         .status(200)
-        .json({ success: false, errorLog });
+        .json({ success: false, errorLog, errorLines });
     }
 
     // ---------------------------

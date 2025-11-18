@@ -46,8 +46,6 @@ docker run --rm -p 3001:3001 latex-backend
 ```bash
 cd frontend
 npm install
-npm install @supabase/supabase-js
-npm install mermaid
 npm run dev
 ```
 

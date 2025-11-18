@@ -161,11 +161,7 @@ export default function ProjectListPage({
     setAddMenuOpen(false)
     const name = await openAddFilePrompt(docType)
     if (!name) return
-    const suffix = docType === 'markdown' ? '.md' : '.tex'
-    const normalized = name.toLowerCase().endsWith(suffix)
-      ? name
-      : `${name}${suffix}`
-    await createDoc({ docType, title: normalized })
+    await createDoc({ docType, title: name })
   }
 
   const triggerFilePicker = () => {
