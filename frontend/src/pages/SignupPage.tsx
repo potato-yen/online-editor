@@ -1,15 +1,20 @@
-// src/pages/SignupPage.tsx
-
+// frontend/src/pages/SignupPage.tsx
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+
+// 引入新元件
+import AuthLayout from '../layouts/AuthLayout'
+import { Button } from '../components/ui/Button'
+import { Input } from '../components/ui/Input'
+import { Card, CardContent, CardFooter } from '../components/ui/Card'
 
 export default function SignupPage() {
   const navigate = useNavigate()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [username, setUsername] = useState('') // ⭐ 新增 username 狀態
+  const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -18,13 +23,12 @@ export default function SignupPage() {
     setError(null)
     setLoading(true)
 
-    // ⭐ 調用 Supabase 帶入 username
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          username: username.trim(), // ⭐ 新增的部分
+          username: username.trim(),
         },
       },
     })
@@ -36,79 +40,81 @@ export default function SignupPage() {
       return
     }
 
-    // 註冊成功 → 導去登入頁或直接跳到主頁
     navigate('/login')
   }
 
   return (
-    <div className="h-screen flex items-center justify-center bg-neutral-950 text-neutral-100 px-4">
-      <form
-        onSubmit={handleSignup}
-        className="w-full max-w-sm p-6 border border-neutral-800 rounded-lg bg-neutral-900 shadow-lg"
-      >
-        <h1 className="text-xl font-semibold mb-6 text-center">Create Account</h1>
+    <AuthLayout 
+      title="建立新帳號" 
+      subtitle="加入我們，開始管理您的文檔"
+    >
+      <Card className="border-border-subtle bg-surface-panel/50 backdrop-blur-sm">
+        <form onSubmit={handleSignup}>
+          <CardContent className="pt-6 space-y-4">
+            {error && (
+              <div className="p-3 text-sm text-status-error bg-status-error/10 border border-status-error/20 rounded-md">
+                {error}
+              </div>
+            )}
 
-        {error && (
-          <div className="text-red-400 text-sm mb-4">{error}</div>
-        )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-content-primary">Username</label>
+              <Input
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="您的暱稱"
+                className="bg-surface-base"
+              />
+            </div>
 
-        {/* Username */}
-        <label className="block mb-4 text-sm">
-          Username
-          <input
-            type="text"
-            value={username}
-            required
-            onChange={(e) => setUsername(e.target.value)}
-            className="mt-1 w-full px-3 py-2 rounded-md bg-neutral-950 border border-neutral-700 text-neutral-100 outline-none focus:border-neutral-300"
-            placeholder="輸入你的名稱"
-          />
-        </label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-content-primary">Email</label>
+              <Input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="bg-surface-base"
+              />
+            </div>
 
-        {/* Email */}
-        <label className="block mb-4 text-sm">
-          Email
-          <input
-            type="email"
-            value={email}
-            required
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full px-3 py-2 rounded-md bg-neutral-950 border border-neutral-700 text-neutral-100 outline-none focus:border-neutral-300"
-            placeholder="輸入你的 Email"
-          />
-        </label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-content-primary">Password</label>
+              <Input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="至少 6 位字元"
+                className="bg-surface-base"
+              />
+            </div>
+          </CardContent>
 
-        {/* Password */}
-        <label className="block mb-6 text-sm">
-          Password
-          <input
-            type="password"
-            value={password}
-            required
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full px-3 py-2 rounded-md bg-neutral-950 border border-neutral-700 text-neutral-100 outline-none focus:border-neutral-300"
-            placeholder="至少 6 位密碼"
-          />
-        </label>
+          <CardFooter className="flex flex-col gap-4">
+            <Button 
+              type="submit" 
+              className="w-full" 
+              isLoading={loading}
+            >
+              {loading ? '註冊中...' : '註冊帳號'}
+            </Button>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2 rounded-md bg-neutral-100 text-neutral-900 font-medium hover:bg-white disabled:opacity-50"
-        >
-          {loading ? 'Signing up…' : 'Sign up'}
-        </button>
-
-        <p className="text-sm text-neutral-400 text-center mt-4">
-          已經有帳號了？
-          <Link
-            to="/login"
-            className="text-neutral-100 underline ml-1"
-          >
-            Login
-          </Link>
-        </p>
-      </form>
-    </div>
+            <div className="text-center text-sm text-content-secondary">
+              已經有帳號了？{' '}
+              <Link 
+                to="/login" 
+                className="font-medium text-brand-DEFAULT hover:text-brand-hover hover:underline underline-offset-4"
+              >
+                直接登入
+              </Link>
+            </div>
+          </CardFooter>
+        </form>
+      </Card>
+    </AuthLayout>
   )
 }

@@ -1,10 +1,11 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import type React from 'react'
 
 type UseEditorActionsOptions = {
   editorRef: React.RefObject<HTMLTextAreaElement>
   onContentChange?: (text: string) => void
   setText: React.Dispatch<React.SetStateAction<string>>
+  indentSize?: number
 }
 
 type SimpleInsertHandler = (
@@ -19,7 +20,13 @@ export function useEditorActions({
   editorRef,
   onContentChange,
   setText,
+  indentSize = 4,
 }: UseEditorActionsOptions) {
+  const indentCharacters = useMemo(() => {
+    const spaces = typeof indentSize === 'number' ? indentSize : 4
+    const safeSize = Number.isFinite(spaces) && spaces > 0 ? Math.min(spaces, 8) : 4
+    return ' '.repeat(safeSize)
+  }, [indentSize])
   const getCurrentLineInfo = useCallback((editor: HTMLTextAreaElement) => {
     const { value, selectionStart } = editor
     let lineStart = selectionStart
@@ -189,7 +196,7 @@ export function useEditorActions({
       }
       const selectedText = value.substring(startLineIndex, endLineIndex)
       const lines = selectedText.split('\n')
-      const indentChars = '    '
+      const indentChars = indentCharacters
       let newLines: string[] = []
       let indentChange = 0
       if (action === 'indent') {
@@ -227,7 +234,7 @@ export function useEditorActions({
         editor.setSelectionRange(newSelStart, newSelEnd)
       }, 0)
     },
-    [editorRef]
+    [editorRef, indentCharacters]
   )
 
   const handleTabKey = useCallback(
@@ -238,7 +245,7 @@ export function useEditorActions({
       if (!editor) return
       const { selectionStart, selectionEnd } = editor
       if (selectionStart === selectionEnd && !e.shiftKey) {
-        document.execCommand('insertText', false, '    ')
+        document.execCommand('insertText', false, indentCharacters)
         return
       }
       if (e.shiftKey) {
@@ -247,7 +254,7 @@ export function useEditorActions({
         handleIndent('indent')
       }
     },
-    [editorRef, handleIndent]
+    [editorRef, handleIndent, indentCharacters]
   )
 
   return {

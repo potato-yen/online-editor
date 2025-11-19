@@ -1,6 +1,13 @@
+// frontend/src/pages/LoginPage.tsx
 import { FormEvent, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+
+// 引入我們的新元件
+import AuthLayout from '../layouts/AuthLayout'
+import { Button } from '../components/ui/Button'
+import { Input } from '../components/ui/Input'
+import { Card, CardContent, CardFooter } from '../components/ui/Card'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -9,7 +16,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // 如果已經登入，就直接丟去 /projects
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
@@ -39,58 +45,68 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="h-screen flex items-center justify-center bg-neutral-950 text-neutral-100">
-      <div className="w-full max-w-md border border-neutral-800 rounded-xl p-6 bg-neutral-900/70 shadow-lg">
-        <h1 className="text-xl font-semibold mb-2">登入 Online Editor</h1>
-        <p className="text-xs text-neutral-400 mb-6">
-          使用 email / password 登入，登入後可以管理你的文檔。
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-xs text-neutral-300">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 rounded-md bg-neutral-950 border border-neutral-700 text-sm outline-none focus:border-neutral-300"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-neutral-300">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 rounded-md bg-neutral-950 border border-neutral-700 text-sm outline-none focus:border-neutral-300"
-            />
-          </div>
-
-          {error && (
-            <div className="text-xs text-red-400 bg-red-950/40 border border-red-900 rounded-md px-3 py-2">
-              {error}
+    <AuthLayout 
+      title="登入 Online Editor" 
+      subtitle="請輸入您的帳號密碼以繼續"
+    >
+      <Card className="border-border-subtle bg-surface-panel/50 backdrop-blur-sm">
+        <form onSubmit={handleSubmit}>
+          <CardContent className="pt-6 space-y-4">
+            {error && (
+              <div className="p-3 text-sm text-status-error bg-status-error/10 border border-status-error/20 rounded-md">
+                {error}
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-content-primary">Email</label>
+              <Input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="bg-surface-base"
+              />
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full mt-2 px-3 py-2 rounded-md bg-neutral-100 text-neutral-900 text-sm font-medium hover:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {loading ? '登入中…' : '登入'}
-          </button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-content-primary">Password</label>
+                {/* 未來可加忘記密碼功能 */}
+              </div>
+              <Input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="bg-surface-base"
+              />
+            </div>
+          </CardContent>
+
+          <CardFooter className="flex flex-col gap-4">
+            <Button 
+              type="submit" 
+              className="w-full" 
+              isLoading={loading}
+            >
+              {loading ? '登入中...' : '登入'}
+            </Button>
+
+            <div className="text-center text-sm text-content-secondary">
+              還沒有帳號？{' '}
+              <Link 
+                to="/signup" 
+                className="font-medium text-brand-DEFAULT hover:text-brand-hover hover:underline underline-offset-4"
+              >
+                前往註冊
+              </Link>
+            </div>
+          </CardFooter>
         </form>
-
-        <div className="mt-4 text-xs text-neutral-400 flex justify-between">
-          <span>還沒有帳號？</span>
-          <Link to="/signup" className="text-neutral-200 hover:underline">
-            前往註冊
-          </Link>
-        </div>
-      </div>
-    </div>
+      </Card>
+    </AuthLayout>
   )
 }

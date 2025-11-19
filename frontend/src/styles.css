@@ -2,25 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ========================================================= */
-/* (NEW FIX) 強制 HTML 和 BODY 都不准滾動 */
-/* ========================================================= */
-html {
-  overflow: hidden !important; /* 強制 HTML 元素隱藏滾輪 */
-}
-body {
-  margin: 0;
-  overflow: hidden !important; /* 再次強調 BODY 隱藏滾輪 */
-}
-html,
-body,
-#root {
-  height: 100%;
-}
-/* ========================================================= */
+@layer base {
+  html {
+    font-family: theme('fontFamily.sans');
+    overflow: hidden !important;
+    scroll-behavior: smooth;
+  }
 
+  body {
+    margin: 0;
+    overflow: hidden !important;
+    height: 100%;
+    @apply bg-surface-base text-content-primary;
+  }
 
-/* custom scrollbars */
+  #root {
+    height: 100%;
+    isolation: isolate;
+  }
+
+  ::selection {
+    @apply bg-brand-active/30 text-white;
+  }
+}
+
+/* --- Custom Scrollbars --- */
 .scrollbar-thin {
   scrollbar-width: thin;
 }
@@ -29,203 +35,202 @@ body,
   height: 6px;
 }
 .scrollbar-thin::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  @apply bg-transparent;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: #525252;
-  border-radius: 9999px;
+  @apply bg-surface-elevated rounded-full hover:bg-content-muted transition-colors;
 }
 
-/* KBD 標籤樣式優化 (適用於 Dark Theme) */
+/* --- KBD Styles --- */
 .prose kbd {
   border: none;
   box-shadow: none;
-  background-color: #3f3f46; /* neutral-700, 深色背景 */
-  color: #d4d4d4; /* neutral-300, 淺色文字 */
-  padding: 0.1rem 0.4rem;
-  border-radius: 6px;
-  font-weight: 500;
-  font-family: inherit;
-  white-space: nowrap;
+  @apply bg-surface-elevated text-content-primary px-1.5 py-0.5 rounded font-medium font-mono;
 }
 
-
-/* ========================================================= */
-/* (FIXED) 修正表格邊框在 dark mode (prose-invert) 下消失的問題 */
-/* ========================================================= */
+/* --- Table Styles (Dark Mode) --- */
 .prose.prose-invert :where(th, td):not(:where([class~=not-prose] *)) {
-  border: 1px solid rgb(82 82 82 / 1); /* neutral-700 */
+  border-color: theme('colors.border.base');
   padding: 0.5rem 0.75rem;
 }
-/* 表格頭列：保持亮色 (組員的原始樣式) */
 .prose.prose-invert :where(thead th):not(:where([class~=not-prose] *)) {
-  background-color: #f4f4f5 !important; /* neutral-100 */
-  color: #18181b !important; /* neutral-900 */
-  font-weight: 600;
-  border-color: rgb(82 82 82 / 1); /* neutral-700 */
+  background-color: theme('colors.surface.panel') !important;
+  color: theme('colors.content.primary') !important;
+  border-color: theme('colors.border.base');
 }
-/* ========================================================= */
 
+/* --- 強制 Markdown 預覽為全白文字 (螢幕顯示用) --- */
+.prose.prose-invert {
+  color: theme('colors.content.primary') !important;
+}
+.prose.prose-invert :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote) {
+  color: inherit !important;
+}
+.prose.prose-invert a {
+  color: theme('colors.brand.DEFAULT') !important;
+}
 
 /* ========================================================= */
-/* (FINAL FIX) 瀏覽器原生列印 (window.print) 樣式 */
+/* Print Styles (PDF Export Fixes) - 最終完美版 */
 /* ========================================================= */
-
-/* 當觸發列印時... */
 @media print {
-  
-  /* 1. (FIXED) 強制隱藏所有帶有 .non-printable class 的元素 */
   .non-printable {
     display: none !important;
   }
 
-  /* 2. (FIXED) 強制重設所有佈局，解除 flex 和 overflow 限制 */
-  body, html, #root {
-    height: auto !important;
-    width: 100% !important;
-    overflow: visible !important;
-    display: block !important;
-    background: #ffffff !important; /* 強制白底 */
-  }
-
-  /* 3. (FIXED) 抓取 App.tsx 裡的主要 flex 容器，並重設它們 */
-  div[class*="flex-col"],
-  div[class*="flex-row"],
+  /* 1. 佈局重置：確保所有容器可見且為流式佈局 */
+  body, html, #root, 
+  div[class*="flex-col"], 
+  div[class*="flex-row"], 
   div[class*="flex-1"],
   div[style*="width:"] {
-    display: block !important;
     height: auto !important;
     width: 100% !important;
     overflow: visible !important;
+    display: block !important;
+    position: static !important;
+    background: #ffffff !important;
+    color: #000000 !important;
   }
 
-  /* 4. 確保 PreviewPane (唯一可見的) 佔滿寬度 */
+  /* 2. 消除雜訊：將所有 Tailwind 邊框強制透明 (除了表格和代碼) */
+  div[class*="border-"], section[class*="border-"] {
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* 3. 強制內文黑字：重寫 Prose 變數，這是最徹底的方法 */
   .prose {
+    --tw-prose-body: #000000 !important;
+    --tw-prose-headings: #000000 !important;
+    --tw-prose-lead: #000000 !important;
+    --tw-prose-links: #000000 !important;
+    --tw-prose-bold: #000000 !important;
+    --tw-prose-counters: #000000 !important;
+    --tw-prose-bullets: #000000 !important;
+    --tw-prose-hr: #000000 !important;
+    --tw-prose-quotes: #000000 !important;
+    --tw-prose-quote-borders: #000000 !important;
+    --tw-prose-captions: #000000 !important;
+    color: #000000 !important; /* 雙重保險 */
     max-width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
     background-color: #ffffff !important;
-    color: #000000 !important;
   }
 
-  /* 5. 強制所有子元素在列印時為黑色 */
-  .prose h1, .prose h2, .prose h3, .prose h4, .prose p, .prose li, .prose a,
-  .prose :where(code):not(:where([class~="not-prose"] *)),
-  .prose :where(pre):not(:where([class~="not-prose"] *)),
-  .prose :where(blockquote):not(:where([class~=not-prose] *)),
-  .prose :where(table th, table td):not(:where([class~=not-prose] *)),
+  .prose.prose-invert {
+    --tw-prose-body: #000000 !important;
+    --tw-prose-headings: #000000 !important;
+    --tw-prose-lead: #000000 !important;
+    --tw-prose-links: #000000 !important;
+    --tw-prose-bold: #000000 !important;
+    --tw-prose-counters: #000000 !important;
+    --tw-prose-bullets: #000000 !important;
+    --tw-prose-hr: #000000 !important;
+    --tw-prose-quotes: #000000 !important;
+    --tw-prose-quote-borders: #000000 !important;
+    --tw-prose-captions: #000000 !important;
+    color: #000000 !important;
+  }
+  
+  /* 4. 針對具體元素強制黑字 (排除 code) */
+  .prose :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote, table, th, td) {
+    color: #000000 !important;
+    text-shadow: none !important;
+  }
+  .prose.prose-invert :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote, table, th, td) {
+    color: #000000 !important;
+    text-shadow: none !important;
+  }
+
   .katex {
     color: #000000 !important;
   }
 
-  /* 6. (FIXED) 修正程式碼區塊和 KBD 的背景 */
-  .prose :where(pre):not(:where([class~="not-prose"] *)) {
-    background-color: #f3f4f6 !important;
-    white-space: pre-wrap !important; 
-    word-wrap: break-word !important;
-    border: 1px solid #ddd !important;
-    box-shadow: none !important;
-    /* (NEW) 強制瀏覽器列印背景顏色 */
+  /* 4.1 隱藏瀏覽器列印時自動補上的 URL 尾註 */
+  a[href]:after {
+    content: none !important;
+  }
+
+  /* 5. 程式碼區塊 (PRE/CODE) 設定 */
+  /* 策略：背景淺灰，基底文字深灰，但【不覆寫 span 顏色】以保留 Tokenizer 效果 */
+  .prose pre {
+    background-color: #f5f5f5 !important; /* 淺灰底，區隔代碼塊 */
+    border: 1px solid #ddd !important;     /* 加上細邊框 */
+    color: #000000 !important;             /* 基底文字設為深色 (非純黑) */
+    break-inside: avoid;                   /* 避免被分頁切斷 */
+    text-shadow: none !important;
+    
+    /* 強制瀏覽器列印背景色 */
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* ========================================================== */
-  /* (FINAL FIX) 修正 KBD 樣式 (移除橢圓形 + 置中) */
-  /* ========================================================== */
+  /* 讓 hljs 容器背景透明，避免蓋掉 pre 的背景 */
+  .prose pre code, .prose pre .hljs {
+    background: transparent !important;
+    color: inherit; /* 繼承 pre 的基底顏色，除非被 span 覆蓋 */
+  }
+
+  /* 6. 表格樣式 */
+  .prose table {
+    border-collapse: collapse !important;
+  }
+  .prose th, .prose td {
+    border: 1px solid #000 !important; /* 列印時表格線條加深 */
+    color: #000 !important;
+  }
+
+  /* 6.1 KBD 與 MARK 元素在列印時的樣式 */
   .prose kbd {
-    background-color: #eeeeee !important; /* 淺灰色背景 */
-    color: #000000 !important; /* 強制黑字 */
+    background-color: #eeeeee !important;
+    color: #000000 !important;
     padding: 0.1rem 0.4rem;
     border-radius: 6px;
+    border: 0 solid #cccccc !important;
+    box-shadow: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 1.5em;
     font-weight: 500;
     font-family: inherit;
     white-space: nowrap;
-    
-    /* (NEW) 強制瀏覽器列印背景顏色 */
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-
-    /* 1. 移除橢圓形 (強制純色邊框) */
-    border: 0px solid #cccccc !important;
-    border-style: solid !important; /* 覆蓋 inset/outset */
-    box-shadow: none !important; /* 移除陰影 */
-
-    /* 2. 文字置中 */
-    display: inline-flex !important; /* 使用 flex 來置中 */
-    align-items: center !important;
-    justify-content: center !important;
-    min-width: 1.5em; /* 給 'c' 這類短按鍵一點寬度 */
-    vertical-align: middle; /* 確保與文字對齊 */
   }
-  
-  /* 7. (NEW) 強制列印 <mark> (高亮) 的背景顏色 */
+
   .prose mark {
-    background-color: #fffb8f !important; /* 淺黃色 */
+    background-color: #fffb8f !important;
     color: #000000 !important;
-    /* (NEW) 強制瀏覽器列印背景顏色 */
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* 8. 移除頁首頁尾 + 設定邊界 */
+  /* 7. 分頁設定：移除瀏覽器預設 header/footer */
   @page {
     size: A4;
-    margin: 20mm; /* 2cm 邊界 */
-    
-    /* (NEW) 移除瀏覽器預設的頁首 (日期) 和頁尾 (網址) */
-    @top-center { content: ""; }
-    @bottom-center { content: ""; }
+    margin: 20mm;
+    @top-center { content: ''; }
+    @bottom-center { content: ''; }
   }
 }
 
-/* ========================================================= */
-/* Copy buttons for code blocks and error logs */
-/* ========================================================= */
-.code-block-with-copy {
-  position: relative;
-}
-
+/* Copy Button Styles */
+.code-block-with-copy { position: relative; }
 .copy-button {
-  background-color: rgba(15, 23, 42, 0.7);
-  color: #f5f5f4;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  @apply bg-surface-panel/80 text-content-primary border border-border-subtle;
   border-radius: 9999px;
   font-size: 0.65rem;
   line-height: 1;
   padding: 0.15rem 0.65rem;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition: all 0.2s ease;
 }
-
-.copy-button:hover,
-.copy-button:focus-visible {
-  background-color: rgba(250, 250, 249, 0.85);
-  color: #111827;
-  border-color: rgba(255, 255, 255, 0.35);
-}
-
-.copy-button--copied {
-  background-color: rgba(74, 222, 128, 0.2);
-  color: #bbf7d0;
-  border-color: rgba(74, 222, 128, 0.6);
-}
-
+.copy-button:hover { @apply bg-surface-elevated text-white border-border-highlight; }
+.copy-button--copied { @apply bg-green-500/20 text-green-400 border-green-500/50; }
 .copy-button--code {
-  position: absolute;
-  top: 0.35rem;
-  right: 0.5rem;
-  opacity: 0.35;
-  transform: translateY(-4px);
+  position: absolute; top: 0.35rem; right: 0.5rem; opacity: 0.35; transform: translateY(-4px);
 }
-
-.code-block-with-copy:hover .copy-button--code,
-.code-block-with-copy:focus-within .copy-button--code {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.copy-button--error {
-  font-size: 0.65rem;
-  padding: 0.2rem 0.75rem;
-}
+.code-block-with-copy:hover .copy-button--code { opacity: 1; transform: translateY(0); }
