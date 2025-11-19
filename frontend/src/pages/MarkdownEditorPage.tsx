@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { EditorCore } from '../App'
+import { useEditorSettings } from '../contexts/EditorSettingsContext'
 
 type DocumentRow = {
   id: string
@@ -23,6 +24,7 @@ export default function MarkdownEditorPage() {
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [pendingText, setPendingText] = useState<string | null>(null)
+  const { autoSaveInterval } = useEditorSettings()
 
   // 讀取文件
   useEffect(() => {
@@ -96,12 +98,16 @@ export default function MarkdownEditorPage() {
     if (!doc || pendingText === null) return
 
     const textToSave = pendingText
-    const timer = setTimeout(() => {
-      performSave(textToSave)
-    }, 3000)
+    const timer = autoSaveInterval
+      ? setTimeout(() => {
+          performSave(textToSave)
+        }, autoSaveInterval)
+      : null
 
-    return () => clearTimeout(timer)
-  }, [pendingText, doc]) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
+  }, [pendingText, doc, autoSaveInterval]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 手動 Save：立刻把最新文字存進去
   const handleManualSave = () => {

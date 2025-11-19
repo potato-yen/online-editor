@@ -24,6 +24,26 @@ const path = require('path');
 const { randomUUID } = require('crypto');
 const { execFile } = require('child_process');
 
+const dotenvPath = path.join(__dirname, '.env')
+if (fs.existsSync(dotenvPath)) {
+  const envContent = fs.readFileSync(dotenvPath, 'utf8')
+  envContent.split(/\r?\n/).forEach((line) => {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) return
+    const idx = trimmed.indexOf('=')
+    if (idx === -1) return
+    const key = trimmed.slice(0, idx).trim()
+    const value = trimmed.slice(idx + 1).trim()
+    if (key && !(key in process.env)) {
+      process.env[key] = value
+    }
+  })
+}
+
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const accountDeletionEnabled = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
+
 // ---------------------------
 // LaTeX engine config
 // ---------------------------
@@ -253,6 +273,65 @@ app.post('/compile-latex', async (req, res) => {
     });
   }
 });
+
+app.post('/delete-account', async (req, res) => {
+  if (!accountDeletionEnabled) {
+    return res.status(503).json({
+      error: 'Account deletion service is not configured on the server.',
+    })
+  }
+
+  const authHeader = req.headers.authorization ?? ''
+  const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i)
+  const accessToken = tokenMatch ? tokenMatch[1] : null
+  const { userId } = req.body || {}
+
+  if (!accessToken || !userId) {
+    return res.status(400).json({
+      error: 'Missing authorization token or user ID.',
+    })
+  }
+
+  try {
+    const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+      },
+    })
+
+    if (!userResponse.ok) {
+      const errorText = await userResponse.text().catch(() => 'Unauthorized')
+      return res.status(401).json({ error: errorText })
+    }
+
+    const user = await userResponse.json()
+    if (user?.id !== userId) {
+      return res.status(403).json({ error: 'User does not match the current session.' })
+    }
+
+    const deleteResponse = await fetch(
+      `${SUPABASE_URL}/auth/v1/admin/users/${userId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+        },
+      }
+    )
+
+    if (!deleteResponse.ok) {
+      const errorText = await deleteResponse.text().catch(() => 'Delete request failed')
+      return res.status(deleteResponse.status).json({ error: errorText })
+    }
+
+    return res.json({ success: true })
+  } catch (err) {
+    console.error('Delete account error:', err)
+    return res.status(500).json({ error: 'Internal error while deleting account.' })
+  }
+})
 
 // ---------------------------
 // 啟動伺服器

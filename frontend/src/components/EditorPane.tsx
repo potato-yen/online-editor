@@ -1,60 +1,52 @@
-// src/components/EditorPane.tsx
+// frontend/src/components/EditorPane.tsx
 import React from 'react'
 import type { Mode } from '../types'
 
-// ===================================================================
-// (MERGED) 接收 editorRef, onScroll, 和 onKeyDown
-// ===================================================================
 interface EditorPaneProps {
   mode: Mode
   text: string
   onTextChange: (newText: string) => void
-  style?: React.CSSProperties
-  // (NEW)
   editorRef: React.RefObject<HTMLTextAreaElement>
   onScroll: (e: React.UIEvent<HTMLTextAreaElement>) => void
-  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void // (NEW)
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
+  fontSize: number
+  wordWrap: boolean
 }
 
 export default function EditorPane({
-  mode,
   text,
   onTextChange,
-  style,
-  // (NEW)
   editorRef,
   onScroll,
-  onKeyDown, // (NEW)
+  onKeyDown,
+  fontSize,
+  wordWrap,
 }: EditorPaneProps) {
   return (
-    <section
-      style={style}
-      className="flex flex-col h-full bg-neutral-950 border-r border-neutral-800"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
-        <div className="text-xs uppercase tracking-wide text-neutral-500">
-          <span className="font-semibold">Editor</span>{' '}
-          <span className="text-neutral-500">
-            {mode === 'markdown' ? 'Markdown' : 'LaTeX'}
-          </span>
-        </div>
+    <div className="h-full w-full flex flex-col bg-surface-base relative group">
+      {/* 編輯區標籤 (浮水印風格) */}
+      <div className="absolute top-2 right-4 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <span className="text-[10px] font-bold text-content-muted bg-surface-panel/80 px-2 py-1 rounded uppercase tracking-widest backdrop-blur-sm">
+          Editor
+        </span>
       </div>
 
-      {/* Scrollable editor area */}
-      <div className="flex-1 h-full overscroll-contain">
-        <textarea
-          // (NEW) 綁定 Ref, Scroll, 和 KeyDown 事件
-          ref={editorRef}
-          onScroll={onScroll}
-          onKeyDown={onKeyDown} // (NEW)
-          // (Original)
-          className="w-full h-full resize-none bg-neutral-950 text-neutral-100 text-sm font-mono leading-relaxed p-4 outline-none scrollbar-thin scrollbar-track-neutral-900 scrollbar-thumb-neutral-600"
-          value={text}
-          onChange={(e) => onTextChange(e.target.value)}
-          spellCheck={false}
-        />
-      </div>
-    </section>
+      <textarea
+        ref={editorRef}
+        onScroll={onScroll}
+        onKeyDown={onKeyDown}
+        className="w-full h-full resize-none bg-transparent text-content-primary font-mono leading-relaxed p-6 outline-none scrollbar-thin scrollbar-track-transparent scrollbar-thumb-surface-elevated/50 hover:scrollbar-thumb-surface-elevated"
+        style={{
+          fontSize: `${fontSize}px`,
+          lineHeight: 1.6,
+          whiteSpace: wordWrap ? undefined : 'pre',
+        }}
+        value={text}
+        onChange={(e) => onTextChange(e.target.value)}
+        wrap={wordWrap ? 'soft' : 'off'}
+        spellCheck={false}
+        placeholder="Start typing here..."
+      />
+    </div>
   )
 }
