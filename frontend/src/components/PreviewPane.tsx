@@ -1,19 +1,13 @@
-// src/components/PreviewPane.tsx
-// (NEW) - Right pane preview
-
+// frontend/src/components/PreviewPane.tsx
 import React, { useEffect, useState } from 'react'
 import type { Mode } from '../types'
 
-// ===================================================================
-// (MERGED) 移除 onScroll 屬性 (prop)
-// ===================================================================
 interface Props {
   mode: Mode
   renderedHTML: string
   pdfURL: string
   errorLog: string
   previewRef: React.RefObject<HTMLDivElement>
-  // onScroll: (e: React.UIEvent<HTMLDivElement>) => void // (REMOVED)
 }
 
 export default function PreviewPane({
@@ -22,7 +16,6 @@ export default function PreviewPane({
   pdfURL,
   errorLog,
   previewRef,
-  // onScroll, // (REMOVED)
 }: Props) {
   const [errorCopied, setErrorCopied] = useState(false)
 
@@ -45,9 +38,7 @@ export default function PreviewPane({
         event.stopPropagation()
         const codeEl = pre.querySelector('code')
         const text = codeEl?.textContent ?? pre.textContent ?? ''
-        if (!text.trim() || !navigator.clipboard?.writeText) {
-          return
-        }
+        if (!text.trim() || !navigator.clipboard?.writeText) return
         try {
           await navigator.clipboard.writeText(text)
           button.textContent = 'Copied'
@@ -59,25 +50,17 @@ export default function PreviewPane({
         } catch (copyErr) {
           console.error('Copy failed:', copyErr)
           button.textContent = 'Failed'
-          window.setTimeout(() => {
-            button.textContent = 'Copy'
-          }, 1400)
         }
       }
-
       button.addEventListener('click', handleClick)
       pre.appendChild(button)
-
       cleanups.push(() => {
         button.removeEventListener('click', handleClick)
         button.remove()
         pre.classList.remove('code-block-with-copy')
       })
     })
-
-    return () => {
-      cleanups.forEach((fn) => fn())
-    }
+    return () => cleanups.forEach((fn) => fn())
   }, [mode, renderedHTML, previewRef])
 
   const handleCopyErrorLog = async () => {
@@ -86,64 +69,61 @@ export default function PreviewPane({
       await navigator.clipboard.writeText(errorLog)
       setErrorCopied(true)
       window.setTimeout(() => setErrorCopied(false), 1400)
-    } catch (err) {
-      console.error('Copy error log failed:', err)
-    }
+    } catch (err) { console.error(err) }
   }
 
   return (
-    <section className="flex-1 flex flex-col bg-neutral-900 overflow-hidden">
-      
-      {/* ================================================== */}
-      {/* (FIXED) 幫這個標頭加上 non-printable */}
-      {/* ================================================== */}
-      <div className="px-4 py-2 text-[11px] uppercase tracking-wide text-neutral-400 border-b border-neutral-800 flex items-center justify-between non-printable">
-        <span className="font-semibold">Preview</span>
-        <span className="text-neutral-500">即時渲染結果</span>
+    <div className="flex-1 flex flex-col bg-surface-layer overflow-hidden border-l border-border-base relative">
+       {/* 預覽區標籤 - 加入 z-index 確保浮在最上層，但不擋住滑鼠事件 */}
+       <div className="absolute top-2 right-4 z-20 pointer-events-none non-printable">
+        <span className="text-[10px] font-bold text-content-muted/50 bg-surface-base/30 px-2 py-1 rounded uppercase tracking-widest backdrop-blur-sm">
+          Preview
+        </span>
       </div>
 
       {mode === 'markdown' ? (
         <div
           ref={previewRef}
-          // onScroll={onScroll} // (REMOVED) 移除 Markdown 滾動
-          className="flex-1 overflow-auto p-6 prose prose-invert max-w-none text-neutral-100 text-base leading-relaxed scrollbar-thin scrollbar-track-neutral-900 scrollbar-thumb-neutral-600"
-          // eslint-disable-next-line react/no-danger
+          className="flex-1 overflow-auto p-8 prose prose-invert max-w-none scrollbar-thin scrollbar-track-transparent"
           dangerouslySetInnerHTML={{ __html: renderedHTML }}
         />
       ) : (
-        <div 
-          className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-track-neutral-900 scrollbar-thumb-neutral-600"
-          // onScroll={onScroll} // (REMOVED) 移除 LaTeX 滾動
-        >
+        // (FIX 4) 移除 items-center justify-center，改用 flex-col 讓內容從上方開始
+        <div className="flex-1 overflow-auto bg-surface-base relative">
           {errorLog ? (
-            <div className="h-full flex flex-col rounded-lg border border-red-700 bg-red-950/40 text-red-200">
-              <div className="px-4 py-2 border-b border-red-800 text-xs font-semibold uppercase tracking-wide flex items-center justify-between gap-4">
-                <span>Compilation Error</span>
-                <button
-                  type="button"
-                  className="copy-button copy-button--error"
-                  onClick={handleCopyErrorLog}
-                >
-                  {errorCopied ? 'Copied' : 'Copy error'}
-                </button>
+            // Error Log Container
+            <div className="absolute inset-0 p-8 overflow-auto scrollbar-thin">
+              <div className="w-full max-w-3xl mx-auto flex flex-col rounded-xl border border-status-error/30 bg-status-error/5 text-status-error shadow-lg">
+                <div className="px-4 py-3 border-b border-status-error/20 bg-status-error/10 flex items-center justify-between sticky top-0 backdrop-blur-sm z-10">
+                  <span className="font-semibold text-sm flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                    Compilation Failed
+                  </span>
+                  <button onClick={handleCopyErrorLog} className="text-xs border border-status-error/30 px-2 py-1 rounded hover:bg-status-error/10 transition-colors">
+                    {errorCopied ? 'Copied!' : 'Copy Log'}
+                  </button>
+                </div>
+                <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed opacity-90">
+                  {errorLog}
+                </pre>
               </div>
-              <pre className="flex-1 overflow-auto px-4 py-3 text-xs font-mono whitespace-pre-wrap leading-relaxed">
-                {errorLog}
-              </pre>
             </div>
           ) : pdfURL ? (
             <iframe
               src={pdfURL}
-              className="w-full h-full rounded-lg bg-neutral-800 border border-neutral-700"
+              className="w-full h-full border-none"
               title="LaTeX PDF Preview"
             />
           ) : (
-            <div className="text-neutral-500 text-sm">
-              尚未有編譯結果，請按「編譯並預覽 (.pdf)」
+            <div className="flex h-full items-center justify-center text-center text-content-muted">
+              <div>
+                <p className="mb-2 text-4xl opacity-20">☕</p>
+                <p className="text-sm">Click "Preview PDF" to compile.</p>
+              </div>
             </div>
           )}
         </div>
       )}
-    </section>
+    </div>
   )
 }
