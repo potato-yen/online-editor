@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --editor-tab-size: 4;
+  }
+
   html {
     font-family: theme('fontFamily.sans');
     overflow: hidden !important;
@@ -21,24 +25,23 @@
     isolation: isolate;
   }
 
-  /* (FIXED) 恢復全域正常的反白選取樣式 (白字藍底) */
   ::selection {
     @apply bg-brand-active/40 text-white;
   }
 }
 
-textarea, pre {
+textarea, pre, code {
   font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace !important;
   font-variant-ligatures: none;
+  tab-size: var(--editor-tab-size) !important;
+  -moz-tab-size: var(--editor-tab-size) !important;
+  -o-tab-size: var(--editor-tab-size) !important;
 }
 
-/* (NEW) 專門針對編輯器的特殊反白樣式 (Rainbow Brackets 需要) */
-/* 我們會在 EditorPane 的 textarea 加上 'rainbow-editor-input' class */
 .rainbow-editor-input::selection {
   @apply bg-brand-active/40 text-transparent;
 }
 
-/* --- Custom Scrollbars --- */
 .scrollbar-thin {
   scrollbar-width: thin;
 }
@@ -53,9 +56,6 @@ textarea, pre {
   @apply bg-surface-elevated rounded-full hover:bg-content-muted transition-colors;
 }
 
-/* ========================================================= */
-/* (FIXED) HackMD 風格 KBD (鍵盤按鍵) - 螢幕顯示用 */
-/* ========================================================= */
 .prose kbd {
   display: inline-block !important;
   padding: 0.1em 0.6em !important;
@@ -66,38 +66,31 @@ textarea, pre {
   color: #333 !important;
   vertical-align: middle !important;
   background-color: #f7f7f7 !important;
-  
-  /* 3D 立體效果 */
   border: 1px solid #ccc !important;
   border-bottom-color: #999 !important;
   border-bottom-width: 3px !important;
   border-radius: 3px !important;
-  
   box-shadow: 0 1px 0 rgba(0,0,0,0.2), 0 0 0 2px #fff inset !important;
   margin: 0 0.2em !important;
   white-space: nowrap !important;
 }
 
-/* --- Table Styles (Dark Mode & Preview) --- */
 .prose.prose-invert :where(th, td):not(:where([class~=not-prose] *)) {
   border-color: theme('colors.border.base');
   padding: 0.5rem 0.75rem;
 }
 
-/* 1. 上方標頭 (Header Row) */
 .prose.prose-invert :where(thead th):not(:where([class~=not-prose] *)) {
   background-color: theme('colors.surface.panel') !important;
   color: theme('colors.content.primary') !important;
   border-color: theme('colors.border.base');
 }
 
-/* 2. 左側第一欄 (Row Header) */
 .prose.prose-invert tbody td:first-child:has(strong) {
   background-color: theme('colors.surface.panel');
   color: theme('colors.content.primary');
 }
 
-/* --- 強制 Markdown 預覽為全白文字 (螢幕顯示用) --- */
 .prose.prose-invert {
   color: theme('colors.content.primary') !important;
 }
@@ -108,9 +101,16 @@ textarea, pre {
   color: theme('colors.brand.DEFAULT') !important;
 }
 
-/* ========================================================= */
-/* (FIXED) Inline Code (行內程式碼) - HackMD/GitHub 風格 */
-/* ========================================================= */
+.prose ol {
+  list-style-type: decimal;
+}
+.prose ol ol {
+  list-style-type: lower-alpha !important;
+}
+.prose ol ol ol {
+  list-style-type: lower-roman !important;
+}
+
 .prose.prose-invert :not(pre) > code {
   color: #333 !important;                
   background-color: #f3f4f6 !important; 
@@ -125,28 +125,34 @@ textarea, pre {
 }
 
 /* ========================================================= */
-/* Print Styles (PDF Export Fixes) */
+/* Print Styles (PDF) */
 /* ========================================================= */
 @media print {
-  .non-printable {
+  /* 隱藏不必要的 UI 元素 */
+  .non-printable, .copy-button {
     display: none !important;
   }
 
-  .copy-button {
-    display: none !important;
-  }
-
+  /* [關鍵設定] 頁面邊距
+    1. 使用 20mm 確保每一頁 (包含第二頁以後) 都有正確的物理邊距。
+    2. 瀏覽器會預設在這個邊距中填入 日期/標題/網址。
+    3. ***請務必在列印視窗中取消勾選「頁首與頁尾 (Headers and footers)」*** 以移除那些文字。
+       (CSS 無法在保留 20mm 邊距的同時強制移除那些文字，這是瀏覽器限制)
+  */
   @page {
     size: A4;
-    margin: 0mm !important; 
+    margin: 20mm !important; 
   }
 
+  /* 重置容器設定，確保多頁列印 */
   html, body {
-    margin: 0 !important;
+    width: 100%;
+    height: auto !important; 
+    min-height: 100%;
+    margin: 0 !important; /* body margin 歸零，由 @page 控制邊距 */
     padding: 0 !important;
+    overflow: visible !important; 
     background: #ffffff !important;
-    height: auto !important;
-    width: 100% !important;
   }
 
   #root, 
@@ -162,134 +168,91 @@ textarea, pre {
     color: #000000 !important;
   }
 
+  /* 內容區域設定 */
   .prose {
-    padding: 20mm !important;
+    padding: 0 !important; /* 邊距已由 @page 處理 */
     margin: 0 auto !important;
-    --tw-prose-body: #000000 !important;
-    --tw-prose-headings: #000000 !important;
-    --tw-prose-lead: #000000 !important;
-    --tw-prose-links: #000000 !important;
-    --tw-prose-bold: #000000 !important;
-    --tw-prose-counters: #000000 !important;
-    --tw-prose-bullets: #000000 !important;
-    --tw-prose-hr: #000000 !important;
-    --tw-prose-quotes: #000000 !important;
-    --tw-prose-quote-borders: #000000 !important;
-    --tw-prose-captions: #000000 !important;
-    color: #000000 !important; 
+    width: 100% !important;
     max-width: 100% !important;
+    color: #000000 !important; 
     background-color: #ffffff !important;
-  }
-
-  .prose.prose-invert {
-    --tw-prose-body: #000000 !important;
-    --tw-prose-headings: #000000 !important;
-    color: #000000 !important;
+    page-break-inside: auto !important; /* 允許長內容分頁 */
   }
   
+  /* 移除邊框與陰影 */
   div[class*="border-"], section[class*="border-"] {
     border-color: transparent !important;
     box-shadow: none !important;
   }
 
-  .prose :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote, table, th, td) {
-    color: #000000 !important;
-    text-shadow: none !important;
-  }
-  .prose.prose-invert :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote, table, th, td) {
-    color: #000000 !important;
-    text-shadow: none !important;
-  }
-
+  /* 強制文字顏色為黑色 */
+  .prose.prose-invert,
+  .prose :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote, table, th, td),
+  .prose.prose-invert :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote, table, th, td),
   .katex {
     color: #000000 !important;
+    text-shadow: none !important;
+    --tw-prose-body: #000000 !important;
+    --tw-prose-headings: #000000 !important;
   }
 
+  /* 隱藏連結後的 URL 顯示 */
   a[href]:after {
     content: none !important;
   }
 
+  /* 代碼區塊列印樣式優化 - 改回深色模式 */
   .prose pre {
-    background-color: #1e1e1e !important; 
+    background-color: #1e1e1e !important; /* VS Code 深色背景 */
     border: 1px solid #333 !important;
-    color: #d4d4d4 !important; 
-    break-inside: avoid;
-    text-shadow: none !important;
+    color: #d4d4d4 !important; /* 淺色文字 */
     border-radius: 6px;
+    box-shadow: none !important;
+    margin-top: 1em;
+    margin-bottom: 1em;
+    break-inside: avoid;
+    
+    /* 強制瀏覽器列印背景色 (重要) */
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  .prose pre code, .prose pre .hljs {
+  .prose pre code {
+    color: inherit !important; /* 繼承 pre 的淺色文字 */
     background: transparent !important;
-    color: inherit;
+    text-shadow: none !important;
   }
 
+  /* 行內代碼樣式 (保持淺色背景，深色文字) */
   .prose :not(pre) > code {
     background-color: #f3f4f6 !important; 
-    color: #333 !important;                
-    padding: 0.2em 0.4em !important;
-    border-radius: 3px !important;
+    color: #000 !important;                
     border: 1px solid #e5e7eb !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    font-weight: normal !important;
-    font-size: 85% !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  .prose kbd {
-    display: inline-block !important;
-    padding: 0.1em 0.6em !important;
-    font-family: sans-serif !important;
-    font-size: 0.85em !important;
-    font-weight: 500 !important;
-    line-height: 1.4 !important;
-    color: #333 !important;
-    vertical-align: middle !important;
-    background-color: #f7f7f7 !important;
-    border: 1px solid #ccc !important;
-    border-bottom-color: #999 !important;
-    border-bottom-width: 3px !important;
-    border-radius: 3px !important;
-    white-space: nowrap !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
+  /* 表格優化 */
   .prose table {
     border-collapse: collapse !important;
+    width: 100%;
+    break-inside: auto;
   }
   
-  .prose th, .prose.prose-invert th {
-    border: 1px solid #000 !important;
-    background-color: #e5e5e5 !important;
-    color: #000 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+  .prose tr {
+    break-inside: avoid;
+    break-after: auto;
   }
 
-  .prose td, .prose.prose-invert td {
+  .prose th, .prose td {
     border: 1px solid #000 !important;
+    color: #000 !important;
     background-color: transparent !important;
-    color: #000 !important;
   }
 
-  .prose tbody td:first-child:has(strong),
-  .prose.prose-invert tbody td:first-child:has(strong) {
-    background-color: #f3f3f3 !important;
-    color: #000 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  .prose mark {
-    background-color: #fffb8f !important;
-    color: #000000 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    border-radius: 2px;
-    padding: 0 2px;
+  .prose th {
+    background-color: #eee !important;
+    font-weight: bold !important;
   }
 }
 
