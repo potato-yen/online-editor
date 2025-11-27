@@ -23,6 +23,9 @@ import TableModal from './components/TableModal'
 import SuperscriptModal from './components/SuperscriptModal'
 import SubscriptModal from './components/SubscriptModal'
 import MatrixModal from './components/MatrixModal' 
+import AlignedModal from './components/AlignedModal'
+import LinkModal from './components/LinkModal'
+import ImageModal from './components/ImageModal' // (NEW)
 
 // Hooks
 import { useEditorActions } from './hooks/useEditorActions'
@@ -55,7 +58,7 @@ type EditorCoreProps = {
   saveStatus?: SaveStatus
   onContentChange?: (text: string) => void
   onManualSave?: () => void
-  headerToolbarUI?: React.ReactNode // 保留介面但不一定要用，因為我們在下面直接判定
+  headerToolbarUI?: React.ReactNode 
 }
 
 export function EditorCore({
@@ -81,15 +84,21 @@ export function EditorCore({
     handleSmartBlock,
     handleSmartInline,
     handleSimpleInsert,
+    handleMathInsert,
     handleTabKey,
   } = useEditorActions({ editorRef, onContentChange, setText, indentSize })
 
   const {
-    isTableModalOpen, isSuperscriptModalOpen, isSubscriptModalOpen, isMatrixModalOpen,
-    onCloseTable, onCloseSuperscript, onCloseSubscript, onCloseMatrix,
-    onRequestTable, onRequestSuperscript, onRequestSubscript, onRequestMatrix,
-    onCreateTable, onCreateSuperscript, onCreateSubscript, onCreateMatrix,
-  } = useEditorModals({ editorRef, handleSimpleInsert })
+    isTableModalOpen, isSuperscriptModalOpen, isSubscriptModalOpen, isMatrixModalOpen, isAlignedModalOpen, isLinkModalOpen, isImageModalOpen, // (NEW)
+    linkInitialText, imageInitialText, // (NEW)
+    onCloseTable, onCloseSuperscript, onCloseSubscript, onCloseMatrix, onCloseAligned, onCloseLink, onCloseImage, // (NEW)
+    onRequestTable, onRequestSuperscript, onRequestSubscript, onRequestMatrix, onRequestAligned, onRequestLink, onRequestImage, // (NEW)
+    onCreateTable, onCreateSuperscript, onCreateSubscript, onCreateMatrix, onCreateAligned, onCreateLink, onCreateImage, // (NEW)
+  } = useEditorModals({ 
+    editorRef, 
+    handleSimpleInsert, 
+    handleMathInsert
+  })
 
   const { handleEditorScroll, editorLineHeight } = useScrollSync({
     editorRef,
@@ -152,19 +161,25 @@ export function EditorCore({
   const ToolbarComponent = mode === 'markdown' ? (
     <MarkdownToolbar 
       onSimpleInsert={handleSimpleInsert}
+      onMathInsert={handleMathInsert}
       onSmartBlock={handleSmartBlock}
       onSmartInline={handleSmartInline}
       onRequestTable={onRequestTable}
       onRequestSuperscript={onRequestSuperscript}
       onRequestSubscript={onRequestSubscript}
       onRequestMatrix={onRequestMatrix}
+      onRequestAligned={onRequestAligned}
+      onRequestLink={onRequestLink}
+      onRequestImage={onRequestImage} // (NEW)
     />
   ) : (
     <LatexToolbar 
       onSimpleInsert={handleSimpleInsert}
+      onMathInsert={handleMathInsert}
       onRequestSuperscript={onRequestSuperscript}
       onRequestSubscript={onRequestSubscript}
       onRequestMatrix={onRequestMatrix}
+      onRequestAligned={onRequestAligned}
     />
   );
 
@@ -184,6 +199,20 @@ export function EditorCore({
         <SuperscriptModal isOpen={isSuperscriptModalOpen} onClose={onCloseSuperscript} onCreate={onCreateSuperscript} />
         <SubscriptModal isOpen={isSubscriptModalOpen} onClose={onCloseSubscript} onCreate={onCreateSubscript} />
         <MatrixModal isOpen={isMatrixModalOpen} onClose={onCloseMatrix} onCreate={onCreateMatrix} />
+        <AlignedModal isOpen={isAlignedModalOpen} onClose={onCloseAligned} onCreate={onCreateAligned} />
+        <LinkModal 
+          isOpen={isLinkModalOpen} 
+          onClose={onCloseLink} 
+          onInsert={onCreateLink} 
+          initialText={linkInitialText}
+        />
+        {/* (NEW) */}
+        <ImageModal
+          isOpen={isImageModalOpen}
+          onClose={onCloseImage}
+          onInsert={onCreateImage}
+          initialText={imageInitialText}
+        />
       </div>
 
       {/* Header & Toolbar */}
@@ -242,7 +271,7 @@ export function EditorCore({
   )
 }
 
-// --- Router Wrapper ---
+// --- Router Wrapper --- (No changes below)
 type AppRouterWrapperProps = {
   openAddFilePrompt: (docType: Mode) => Promise<string | null>
 }
@@ -266,13 +295,11 @@ function AppRouterWrapper({ openAddFilePrompt }: AppRouterWrapperProps) {
 
 // --- Main App Component ---
 export default function App() {
-  // (Prompt Logic 保持不變，與舊版 App.tsx 相同，這裡為節省篇幅省略 State 宣告，請保留原有的 promptState, promptValue, handlePrompt... 等邏輯)
   const [promptState, setPromptState] = useState<{docType: Mode, defaultValue: string} | null>(null)
   const [promptValue, setPromptValue] = useState('')
   const resolverRef = useRef<((value: string | null) => void) | null>(null)
   const promptInputRef = useRef<HTMLInputElement | null>(null)
 
-  // Prompt Effect
   useEffect(() => {
     if (!promptState) return
     const raf = requestAnimationFrame(() => promptInputRef.current?.select())
@@ -301,7 +328,6 @@ export default function App() {
         <AppRouterWrapper openAddFilePrompt={openAddFilePrompt} />
       </BrowserRouter>
 
-      {/* Custom Prompt Modal (Styled) */}
       {promptState && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => closePrompt(null)}>
           <div className="w-full max-w-sm bg-surface-panel border border-border-base rounded-xl p-6 shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>

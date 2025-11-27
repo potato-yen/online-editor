@@ -39,13 +39,15 @@ export default function Dropdown({ label, children }: DropdownProps) {
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
+        // (FIXED) 關鍵修正：阻止按鈕取得焦點，保留編輯區的反白狀態
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => setIsOpen(!isOpen)}
-        // (FIX 1) 增強按鈕樣式：明確的 border, 背景色, 與文字顏色
         className={cn(
-          "px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1 border",
+          "px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1 border transition-all duration-200 select-none focus:outline-none focus:ring-2 focus:ring-brand-active/50",
+          "active:scale-95", 
           isOpen 
-            ? "bg-brand-muted text-brand-DEFAULT border-brand-DEFAULT/30" 
-            : "bg-surface-panel border-border-subtle text-content-primary hover:bg-surface-elevated hover:border-border-highlight"
+            ? "bg-brand-muted text-brand-DEFAULT border-brand-DEFAULT/30 shadow-inner" 
+            : "bg-surface-panel border-border-subtle text-content-primary hover:bg-surface-elevated hover:border-border-highlight hover:shadow-sm"
         )}
       >
         {label}
@@ -72,9 +74,14 @@ export function DropdownItem({ onClick, children }: DropdownItemProps) {
   return (
     <button
       type="button"
+      // (FIXED) 關鍵修正：阻止選項取得焦點
+      onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      // (FIX 1) 確保下拉選單項目文字顏色正確
-      className="w-full text-left block px-3 py-2 text-xs text-content-primary hover:bg-brand-DEFAULT hover:text-white transition-colors"
+      className={cn(
+        "w-full text-left block px-3 py-2 text-xs text-content-primary transition-all duration-200",
+        "hover:bg-brand-DEFAULT hover:text-white hover:pl-4", 
+        "active:bg-brand-active active:scale-[0.99]" 
+      )}
     >
       {children}
     </button>
