@@ -11,12 +11,17 @@
 
 ## 主要功能（簡述）
 
-- 支援 **Markdown / LaTeX** 兩種文檔類型，登入後以「專案列表」管理文檔（每位用戶最多 10 份）。
-- 左側編輯、右側預覽：Markdown 走 KaTeX 渲染、LaTeX 走後端編譯 PDF 即時預覽。
-- **自動儲存 + 手動 Save 按鈕**，內容會綁定到目前登入使用者的 Supabase documents。
-- 匯入 `.md / .tex`，匯出 `.md / .tex`；Markdown 可一鍵匯出為白底 PDF。
-- 專案列表提供「新增（名稱＋類型）/ 重新命名 / 刪除」功能，並以最近編輯時間排序。
-- 右上角頭像顯示註冊時填寫的使用者名稱，點擊可展開使用者資訊與登出選單。
+- 雙模式編輯與全新 UI：支援 Markdown / LaTeX 編輯，採用現代化深色主題 (Dark Mode) 與動態背景設計，提供更舒適的視覺體驗。
+
+- 增強型 Markdown：除了 KaTeX 數學公式外，新增 Mermaid 圖表繪製支援與程式碼區塊語法高亮 (Highlight.js)。
+
+- LaTeX 智慧輔助：內建視覺化的矩陣生成器 (Matrix Modal)、表格精靈與常用數學符號快捷選單，大幅降低複雜語法的輸入門檻。
+
+- 專案與檔案管理：支援文檔的新增、刪除、重新命名，並可直接匯入本機檔案 (.md / .tex) 進行編輯。
+
+- 個人化與帳號設定：可自訂編輯器字體大小、自動換行與縮排設定；帳號管理功能新增修改密碼與刪除帳號。
+
+- 即時預覽與同步：左側編輯、右側預覽（支援捲動同步），內容自動儲存至雲端資料庫，並支援匯出原始碼或 PDF。
 
 ## 啟動流程（開發狀態）
 
@@ -38,6 +43,12 @@ docker run --rm -p 3001:3001 latex-backend
 ```
 
 </details>
+請自行修改 `.env.example` 為 `.env`
+
+```bash
+SUPABASE_URL=your-supabase-url-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+```
 
 這會在 http://localhost:3001 開一個 `/compile-latex` API。
 
@@ -73,7 +84,9 @@ Vite 預設在 http://localhost:5173
 1.  開啟 `http://localhost:5173`。
 2.  您會被導向「註冊」或「登入」頁面。
 3.  註冊一個新帳號並登入。
-4.  登入後，您將被導向主編輯器頁面，可以開始使用了。
+4.  登入後，您將被導向專屬專案資料庫
+5.  選擇`import` 或 `Add New`新增檔案，並輸入檔名
+6.  進入主要編輯頁面，即可開始使用
 
 ### 注意：`tectonic`跟`pdflatex`必須要有其中之一
 <details>

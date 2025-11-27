@@ -7,9 +7,10 @@ type UseScrollSyncOptions = {
   editorRef: React.RefObject<HTMLTextAreaElement>
   previewRef: React.RefObject<HTMLDivElement>
   mode: Mode
+  fontSize?: number
 }
 
-export function useScrollSync({ editorRef, previewRef, mode }: UseScrollSyncOptions) {
+export function useScrollSync({ editorRef, previewRef, mode, fontSize }: UseScrollSyncOptions) {
   const isEditorScrolling = useRef(false)
   const editorScrollTimer = useRef<NodeJS.Timeout | null>(null)
   const editorLineHeight = useRef(22)
@@ -22,7 +23,7 @@ export function useScrollSync({ editorRef, previewRef, mode }: UseScrollSyncOpti
     if (!Number.isNaN(lineHeight) && lineHeight > 0) {
       editorLineHeight.current = lineHeight
     }
-  }, [editorRef, mode])
+  }, [editorRef, mode, fontSize])
 
   useEffect(() => {
     return () => {
