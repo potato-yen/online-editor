@@ -1,5 +1,6 @@
 // src/components/SubscriptModal.tsx
 import React, { useState } from 'react';
+import { Button } from './ui/Button'; // [Refactor]
 
 interface Props {
   isOpen: boolean;
@@ -33,7 +34,6 @@ export default function SubscriptModal({ isOpen, onClose, onCreate }: Props) {
         
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
-            {/* 底數 (Base) */}
             <div>
               <label htmlFor="base" className="block text-sm font-medium text-neutral-300">
                 底數 (Base)
@@ -47,7 +47,6 @@ export default function SubscriptModal({ isOpen, onClose, onCreate }: Props) {
               />
             </div>
 
-            {/* 下標 (Index) */}
             <div>
               <label htmlFor="index" className="block text-sm font-medium text-neutral-300">
                 下標 (Index)
@@ -62,21 +61,21 @@ export default function SubscriptModal({ isOpen, onClose, onCreate }: Props) {
             </div>
           </div>
 
-          {/* 按鈕區 */}
+          {/* [Refactor] 使用共用 Button 元件 */}
           <div className="mt-6 flex justify-end gap-3">
-            <button
+            <Button
               type="button"
+              variant="secondary"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium bg-neutral-700 hover:bg-neutral-600 rounded-lg text-neutral-100"
             >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="px-4 py-2 text-sm font-medium bg-sky-600 hover:bg-sky-500 rounded-lg text-white"
+              variant="primary"
             >
               建立
-            </button>
+            </Button>
           </div>
         </form>
       </div>

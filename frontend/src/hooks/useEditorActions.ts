@@ -8,13 +8,46 @@ type UseEditorActionsOptions = {
   indentSize?: number
 }
 
+// 定義選取範圍的調整參數 (相對於插入內容的起始位置)
+export type SelectionOptions = {
+  relativeStart: number;
+  relativeLength: number;
+}
+
 type SimpleInsertHandler = (
   templateStart: string,
   templateEnd: string,
-  placeholder: string
+  placeholder: string,
+  selectionOptions?: SelectionOptions
 ) => void
 
 type SmartBlockType = 'heading' | 'list' | 'quote' | 'task'
+
+// 檢查游標位置是否在數學環境中
+function isCursorInMath(text: string, pos: number): boolean {
+  let inCodeBlock = false;
+  let inInlineCode = false;
+  let inBlockMath = false; 
+  let inInlineMath = false;
+  
+  for (let i = 0; i < pos; i++) {
+    const char = text[i];
+    if (char === '\\') { 
+      if (text.startsWith('\\[', i)) { inBlockMath = true; i++; continue; }
+      if (text.startsWith('\\]', i)) { inBlockMath = false; i++; continue; }
+      i++; 
+      continue;
+    }
+    if (text.startsWith('```', i)) { inCodeBlock = !inCodeBlock; i += 2; continue; }
+    if (inCodeBlock) continue;
+    if (char === '`') { inInlineCode = !inInlineCode; continue; }
+    if (inInlineCode) continue;
+    if (text.startsWith('$$', i)) { inBlockMath = !inBlockMath; i++; continue; }
+    if (inBlockMath) continue;
+    if (char === '$') { inInlineMath = !inInlineMath; }
+  }
+  return inBlockMath || inInlineMath;
+}
 
 export function useEditorActions({
   editorRef,
@@ -27,6 +60,7 @@ export function useEditorActions({
     const safeSize = Number.isFinite(spaces) && spaces > 0 ? Math.min(spaces, 8) : 4
     return ' '.repeat(safeSize)
   }, [indentSize])
+
   const getCurrentLineInfo = useCallback((editor: HTMLTextAreaElement) => {
     const { value, selectionStart } = editor
     let lineStart = selectionStart
@@ -129,19 +163,53 @@ export function useEditorActions({
   )
 
   const handleSimpleInsert: SimpleInsertHandler = useCallback(
-    (templateStart, templateEnd, placeholder) => {
+    (templateStart, templateEnd, placeholder, selectionOptions) => {
       const editor = editorRef.current
       if (!editor) return
       const { selectionStart, selectionEnd, value } = editor
       const selectedText = value.substring(selectionStart, selectionEnd)
-      const textToInsert = selectedText
-        ? templateStart + selectedText + templateEnd
-        : templateStart + placeholder + templateEnd
-      const isMultiLine = textToInsert.includes('\n')
+      
+      let textToInsert = '';
+      const isSymbolReplacement = templateEnd === '';
+
+      if (selectedText) {
+        if (isSymbolReplacement) {
+          textToInsert = templateStart + templateEnd;
+        } else {
+          textToInsert = templateStart + selectedText + templateEnd;
+        }
+      } else {
+        textToInsert = templateStart + placeholder + templateEnd;
+      }
+
       editor.focus()
-      if (isMultiLine) {
+      
+      const updateCursor = () => {
+        if (!editor) return;
+        let newCursorStart: number
+        let newCursorEnd: number
+        
+        if (selectionOptions) {
+          newCursorStart = selectionStart + selectionOptions.relativeStart;
+          newCursorEnd = newCursorStart + selectionOptions.relativeLength;
+        } else if (selectedText && !isSymbolReplacement) {
+           newCursorStart = newCursorEnd = selectionStart + textToInsert.length
+        } else {
+           newCursorStart = selectionStart + templateStart.length
+           newCursorEnd = isSymbolReplacement ? newCursorStart : newCursorStart + placeholder.length
+        }
+        editor.setSelectionRange(newCursorStart, newCursorEnd)
+      };
+
+      const isSuccess = document.execCommand('insertText', false, textToInsert)
+      
+      if (isSuccess) {
+         setTimeout(() => {
+            updateCursor(); 
+         }, 0);
+      } else {
         console.warn(
-          'Forcing state update for multi-line insert (Undo not supported for this action).'
+          'execCommand failed, falling back to state update (Undo not supported for this action).'
         )
         const newText =
           value.substring(0, selectionStart) + textToInsert + value.substring(selectionEnd)
@@ -149,63 +217,82 @@ export function useEditorActions({
         onContentChange?.(newText)
         setTimeout(() => {
           editor.focus()
-          let newCursorStart: number
-          let newCursorEnd: number
-          if (selectedText) {
-            newCursorStart = newCursorEnd = selectionStart + textToInsert.length
-          } else {
-            newCursorStart = selectionStart + templateStart.length
-            newCursorEnd = newCursorStart + placeholder.length
-          }
-          editor.setSelectionRange(newCursorStart, newCursorEnd)
+          updateCursor()
         }, 0)
-      } else {
-        const isSuccess = document.execCommand('insertText', false, textToInsert)
-        if (isSuccess && !selectedText) {
-          const newCursorStart = selectionStart + templateStart.length
-          const newCursorEnd = newCursorStart + placeholder.length
-          editor.setSelectionRange(newCursorStart, newCursorEnd)
-        }
-        if (!isSuccess) {
-          console.warn(
-            'execCommand failed, falling back to state update (Undo not supported for this action).'
-          )
-          const newText =
-            value.substring(0, selectionStart) + textToInsert + value.substring(selectionEnd)
-          setText(newText)
-          onContentChange?.(newText)
-        }
       }
     },
     [editorRef, onContentChange, setText]
   )
+
+  const handleMathInsert = useCallback(
+    (templateStart: string, templateEnd: string, placeholder: string, selectionOptions?: SelectionOptions) => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      
+      const { selectionStart, selectionEnd, value } = editor;
+      
+      const inMath = isCursorInMath(value, selectionStart);
+      
+      let finalStart = templateStart;
+      let finalEnd = templateEnd;
+      let addedPrefixLength = 0;
+      
+      if (!inMath) {
+        const { currentLine, lineStart, lineEnd } = getCurrentLineInfo(editor);
+        const selectedText = value.substring(selectionStart, selectionEnd);
+        const textBeforeSelection = value.substring(lineStart, selectionStart);
+        const textAfterSelection = value.substring(selectionEnd, lineEnd);
+        const isLineEmpty = currentLine.trim().length === 0;
+        const isSelectionWholeLine = selectedText.length > 0 && 
+                                     textBeforeSelection.trim().length === 0 && 
+                                     textAfterSelection.trim().length === 0;
+
+        if (isLineEmpty || isSelectionWholeLine) {
+           const prefix = '$$\n';
+           finalStart = prefix + templateStart;
+           finalEnd = templateEnd + '\n$$';
+           addedPrefixLength = prefix.length;
+        } else {
+           const prefix = '$';
+           finalStart = prefix + templateStart;
+           finalEnd = templateEnd + prefix;
+           addedPrefixLength = prefix.length;
+        }
+      }
+
+      const adjustedOptions = selectionOptions ? {
+        relativeStart: selectionOptions.relativeStart + addedPrefixLength,
+        relativeLength: selectionOptions.relativeLength
+      } : undefined;
+
+      handleSimpleInsert(finalStart, finalEnd, placeholder, adjustedOptions);
+    },
+    [handleSimpleInsert, editorRef, getCurrentLineInfo]
+  );
 
   const handleIndent = useCallback(
     (action: 'indent' | 'outdent') => {
       const editor = editorRef.current
       if (!editor) return
       const { selectionStart, selectionEnd, value } = editor
-      const isSingleCaret = selectionStart === selectionEnd
-      if (isSingleCaret && !value.substring(selectionStart, selectionEnd).includes('\n')) {
-        return
-      }
+      
       let startLineIndex = value.lastIndexOf('\n', selectionStart - 1) + 1
       let endLineIndex = selectionEnd
-      if (value[endLineIndex - 1] === '\n') {
+      
+      if (endLineIndex > 0 && value[endLineIndex - 1] === '\n' && endLineIndex > startLineIndex) {
         endLineIndex -= 1
       }
+      
       const selectedText = value.substring(startLineIndex, endLineIndex)
       const lines = selectedText.split('\n')
       const indentChars = indentCharacters
       let newLines: string[] = []
-      let indentChange = 0
+      let indentChange = 0 // 總字元數變化量
+      
       if (action === 'indent') {
         newLines = lines.map((line) => {
-          if (line.trim().length > 0) {
-            indentChange += indentChars.length
-            return indentChars + line
-          }
-          return line
+          indentChange += indentChars.length
+          return indentChars + line
         })
       } else {
         newLines = lines.map((line) => {
@@ -220,49 +307,178 @@ export function useEditorActions({
           return line
         })
       }
+      
       const newTextToInsert = newLines.join('\n')
+      
       editor.focus()
       editor.setSelectionRange(startLineIndex, endLineIndex)
       document.execCommand('insertText', false, newTextToInsert)
+      
       setTimeout(() => {
         editor.focus()
-        const newSelStart =
-          selectionStart === startLineIndex
-            ? startLineIndex
-            : selectionStart + (action === 'indent' ? indentChars.length : -indentChars.length)
-        const newSelEnd = selectionEnd + indentChange
-        editor.setSelectionRange(newSelStart, newSelEnd)
+        // (FIXED) 修正選取邏輯：
+        // 如果原本是「游標」(selectionStart === selectionEnd)，則插入後應該還是游標，停在文字後面
+        // 如果原本是「選取範圍」，則維持選取整塊
+        
+        const isSingleCursor = selectionStart === selectionEnd;
+
+        if (isSingleCursor) {
+            // 游標模式：游標移動到縮排後的文字後面
+            // 新位置 = 原位置 + (第一行的縮排變化)
+            // 但因為我們是替換整行，所以簡單計算：
+            // 如果是 indent，游標 + indentChars.length
+            // 如果是 outdent，游標可能 - indentChars.length (但不超過行首)
+            
+            // 簡單策略：單行縮排後，讓游標停在該行內容結束處 (即插入後的結束位置)
+            // 但這樣會導致連續按 Tab 時游標亂跑。
+            // 正確策略：游標應該跟著文字移動。
+            // 這裡為了簡化且修正 bug，我們讓單行縮排後「不選取」，游標停在行尾
+            const newCursorPos = startLineIndex + newTextToInsert.length;
+            editor.setSelectionRange(newCursorPos, newCursorPos);
+        } else {
+            // 選取模式：重新選取被縮排的所有行
+            const newLength = newTextToInsert.length
+            editor.setSelectionRange(startLineIndex, startLineIndex + newLength)
+        }
       }, 0)
     },
     [editorRef, indentCharacters]
   )
 
-  const handleTabKey = useCallback(
+  // -------------------------------------------------------------------
+  // 整合所有鍵盤事件：快捷鍵、Tab縮排、智慧列表、自動括號
+  // -------------------------------------------------------------------
+  const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key !== 'Tab') return
-      e.preventDefault()
-      const editor = editorRef.current
-      if (!editor) return
-      const { selectionStart, selectionEnd } = editor
-      if (selectionStart === selectionEnd && !e.shiftKey) {
-        document.execCommand('insertText', false, indentCharacters)
-        return
+      const editor = editorRef.current;
+      if (!editor) return;
+
+      // 1. 快捷鍵 (Ctrl/Cmd + B/I/S)
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+        const key = e.key.toLowerCase();
+        if (key === 'b') {
+          e.preventDefault();
+          handleSmartInline('**', 'bold');
+          return;
+        }
+        if (key === 'i') {
+          e.preventDefault();
+          handleSmartInline('*', 'italic');
+          return;
+        }
+        if (key === 's') {
+          e.preventDefault();
+          return;
+        }
       }
-      if (e.shiftKey) {
-        handleIndent('outdent')
-      } else {
-        handleIndent('indent')
+
+      // 2. Tab 鍵 (縮排/反縮排)
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const { selectionStart, selectionEnd } = editor;
+        
+        // 單行且無選取時，直接插入 Tab (空格)
+        if (selectionStart === selectionEnd && !e.shiftKey) {
+           document.execCommand('insertText', false, indentCharacters);
+           return;
+        }
+        
+        // 多行選取或 Shift+Tab 才執行整行縮排
+        if (e.shiftKey) {
+          handleIndent('outdent');
+        } else {
+          handleIndent('indent');
+        }
+        return;
+      }
+
+      // 3. Enter 鍵 (智慧列表延續)
+      if (e.key === 'Enter') {
+        const { currentLine } = getCurrentLineInfo(editor);
+        const match = currentLine.match(/^(\s*)([-*+]|\d+\.)\s+(\[[ x]\]\s)?/);
+        
+        if (match) {
+          const content = currentLine.substring(match[0].length).trim();
+          
+          if (content === '') {
+             e.preventDefault();
+             const { lineStart, lineEnd } = getCurrentLineInfo(editor);
+             editor.setSelectionRange(lineStart, lineEnd);
+             document.execCommand('delete');
+             //document.execCommand('insertText', false, '\n'); 
+             return;
+          }
+
+          e.preventDefault();
+          let nextPrefix = match[0];
+          
+          const numberMatch = match[2].match(/^(\d+)\./);
+          if (numberMatch) {
+             const currentNum = parseInt(numberMatch[1], 10);
+             const newNumStr = `${currentNum + 1}.`;
+             nextPrefix = nextPrefix.replace(match[2], newNumStr);
+          }
+          
+          if (match[3]) {
+             nextPrefix = nextPrefix.replace(/\[x\]/, '[ ]');
+          }
+
+          document.execCommand('insertText', false, '\n' + nextPrefix);
+          return;
+        }
+      }
+
+      // 4. 自動配對括號與引號
+      const pairs: Record<string, string> = {
+        '(': ')',
+        '[': ']',
+        '{': '}',
+        '"': '"',
+        "'": "'",
+        '`': '`',
+      };
+
+      if (Object.keys(pairs).includes(e.key)) {
+        e.preventDefault();
+        const open = e.key;
+        const close = pairs[open];
+        const { selectionStart, selectionEnd, value } = editor;
+        
+        if (selectionStart !== selectionEnd) {
+           const selectedText = value.substring(selectionStart, selectionEnd);
+           document.execCommand('insertText', false, open + selectedText + close);
+        } else {
+           document.execCommand('insertText', false, open + close);
+           editor.setSelectionRange(selectionStart + 1, selectionStart + 1);
+        }
+        return;
+      }
+      
+      // 5. Backspace 智慧刪除
+      if (e.key === 'Backspace') {
+         const { selectionStart, selectionEnd, value } = editor;
+         if (selectionStart === selectionEnd && selectionStart > 0) {
+            const charBefore = value[selectionStart - 1];
+            const charAfter = value[selectionStart];
+            
+            if (pairs[charBefore] === charAfter) {
+               e.preventDefault();
+               editor.setSelectionRange(selectionStart - 1, selectionStart + 1);
+               document.execCommand('delete');
+            }
+         }
       }
     },
-    [editorRef, handleIndent, indentCharacters]
+    [editorRef, handleIndent, indentCharacters, getCurrentLineInfo, handleSmartInline]
   )
 
   return {
     handleSmartBlock,
     handleSmartInline,
     handleSimpleInsert,
+    handleMathInsert, 
     handleIndent,
-    handleTabKey,
+    handleTabKey: handleKeyDown,
   }
 }
 
