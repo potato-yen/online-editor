@@ -11,7 +11,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../compone
 import { Badge } from '../components/ui/Badge'
 import { Input } from '../components/ui/Input'
 
-// Icons
+// Icons (省略部分 icon 定義以節省空間，保留使用的)
 const IconDots = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /></svg>
 )
@@ -44,6 +44,54 @@ type ProjectListPageProps = {
   openAddFilePrompt: (docType: DocType) => Promise<string | null>
 }
 
+// (NEW) 範本資料
+const TEMPLATES = [
+  {
+    title: 'Math Notes',
+    type: 'markdown' as const,
+    content: `# Math Notes
+
+## Quadratic Formula
+The solution for $ax^2 + bx + c = 0$ is:
+
+$$
+x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
+$$
+
+## Matrix Example
+$$
+\\begin{bmatrix}
+1 & 0 \\\\
+0 & 1
+\\end{bmatrix}
+$$
+`
+  },
+  {
+    title: 'Academic Paper (LaTeX)',
+    type: 'latex' as const,
+    content: `\\documentclass{article}
+\\usepackage{amsmath}
+\\title{My First Paper}
+\\author{Author Name}
+\\date{\\today}
+
+\\begin{document}
+\\maketitle
+
+\\section{Introduction}
+Hello, World! This is a LaTeX document.
+
+\\section{Equations}
+\\begin{equation}
+  E = mc^2
+\\end{equation}
+
+\\end{document}
+`
+  }
+];
+
 export default function ProjectListPage({ openAddFilePrompt }: ProjectListPageProps) {
   const navigate = useNavigate()
   const [user, setUser] = useState<any>(null)
@@ -52,13 +100,9 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
   const [creating, setCreating] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   
-  // 檔案匯入用
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  
-  // 檢查是否可以再新增
   const canCreateMore = docs.length < MAX_DOCS
 
-  // --- Logic 區 (保持原有邏輯不變) ---
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null)
@@ -122,6 +166,16 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
     if (name) await createDoc({ docType, title: name })
   }
 
+  // (NEW) 使用範本建立
+  const handleUseTemplate = async (template: typeof TEMPLATES[0]) => {
+    if (!canCreateMore) return;
+    await createDoc({
+      docType: template.type,
+      title: `${template.title} (Copy)`,
+      content: template.content
+    });
+  };
+
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -163,7 +217,6 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
     navigate('/')
   }
 
-  // --- Render 區 ---
   if (!user) return <div className="h-screen flex items-center justify-center bg-surface-base text-content-secondary">Please login...</div>
 
   return (
@@ -196,13 +249,10 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
               >
                 <IconPlus /> Create New
               </Button>
-              {/* Simple CSS Hover Dropdown for Create */}
-              {canCreateMore && (
-                <div className="absolute right-0 mt-1 w-40 py-1 bg-surface-panel border border-border-base rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right z-20">
-                  <button onClick={() => handleAddDoc('markdown')} className="w-full text-left px-4 py-2 text-sm hover:bg-surface-elevated text-content-primary">Markdown</button>
-                  <button onClick={() => handleAddDoc('latex')} className="w-full text-left px-4 py-2 text-sm hover:bg-surface-elevated text-content-primary">LaTeX</button>
-                </div>
-              )}
+              <div className="absolute right-0 mt-1 w-40 py-1 bg-surface-panel border border-border-base rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right z-20">
+                <button onClick={() => handleAddDoc('markdown')} className="w-full text-left px-4 py-2 text-sm hover:bg-surface-elevated text-content-primary">Markdown</button>
+                <button onClick={() => handleAddDoc('latex')} className="w-full text-left px-4 py-2 text-sm hover:bg-surface-elevated text-content-primary">LaTeX</button>
+              </div>
             </div>
           </div>
         </div>
@@ -211,12 +261,34 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
         {loading ? (
           <div className="text-center py-20 text-content-muted">Loading projects...</div>
         ) : docs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 border border-dashed border-border-base rounded-2xl bg-surface-layer/50">
-            <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center mb-4 text-content-muted">
-              <IconFile />
+          <div className="flex flex-col gap-8">
+            {/* Empty State with Templates */}
+            <div className="text-center space-y-4 py-8">
+              <div className="w-16 h-16 rounded-full bg-surface-elevated flex items-center justify-center mx-auto text-content-muted">
+                <IconFile />
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-content-primary">No documents yet</h3>
+                <p className="text-content-secondary text-sm">Start from scratch or pick a template:</p>
+              </div>
             </div>
-            <h3 className="text-lg font-medium text-content-primary">No documents yet</h3>
-            <p className="text-content-secondary text-sm mt-1">Create your first project to get started.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto w-full">
+              {TEMPLATES.map((tpl, i) => (
+                <button 
+                  key={i}
+                  onClick={() => handleUseTemplate(tpl)}
+                  disabled={!canCreateMore || creating}
+                  className="flex flex-col items-start p-4 rounded-xl border border-border-base bg-surface-layer hover:border-brand-DEFAULT hover:shadow-md transition-all text-left group"
+                >
+                  <span className="text-xs font-bold text-brand-DEFAULT uppercase tracking-wider mb-1">{tpl.type}</span>
+                  <span className="text-base font-semibold text-content-primary group-hover:text-brand-hover">{tpl.title}</span>
+                  <p className="text-xs text-content-muted mt-2 line-clamp-2 opacity-70">
+                    {tpl.content.slice(0, 60).replace(/\n/g, ' ')}...
+                  </p>
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -231,7 +303,6 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
                     <div className="p-2 rounded-lg bg-surface-elevated text-brand-DEFAULT mb-3">
                        <IconFile />
                     </div>
-                    {/* Context Menu Button */}
                     <div className="relative" onClick={e => e.stopPropagation()}>
                       <button 
                         onClick={(e) => {
@@ -242,7 +313,6 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
                       >
                         <IconDots />
                       </button>
-                      {/* Context Menu Dropdown */}
                       {menuOpenId === doc.id && (
                         <div className="absolute right-0 mt-1 w-32 py-1 bg-surface-panel border border-border-base rounded-lg shadow-xl z-30 animate-in fade-in zoom-in-95 duration-100">
                           <button 

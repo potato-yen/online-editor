@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --editor-tab-size: 4;
+  }
+
   html {
     font-family: theme('fontFamily.sans');
     overflow: hidden !important;
@@ -22,11 +26,22 @@
   }
 
   ::selection {
-    @apply bg-brand-active/30 text-white;
+    @apply bg-brand-active/40 text-white;
   }
 }
 
-/* --- Custom Scrollbars --- */
+textarea, pre, code {
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace !important;
+  font-variant-ligatures: none;
+  tab-size: var(--editor-tab-size) !important;
+  -moz-tab-size: var(--editor-tab-size) !important;
+  -o-tab-size: var(--editor-tab-size) !important;
+}
+
+.rainbow-editor-input::selection {
+  @apply bg-brand-active/40 text-transparent;
+}
+
 .scrollbar-thin {
   scrollbar-width: thin;
 }
@@ -41,25 +56,41 @@
   @apply bg-surface-elevated rounded-full hover:bg-content-muted transition-colors;
 }
 
-/* --- KBD Styles --- */
 .prose kbd {
-  border: none;
-  box-shadow: none;
-  @apply bg-surface-elevated text-content-primary px-1.5 py-0.5 rounded font-medium font-mono;
+  display: inline-block !important;
+  padding: 0.1em 0.6em !important;
+  font-family: sans-serif !important;
+  font-size: 0.85em !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+  color: #333 !important;
+  vertical-align: middle !important;
+  background-color: #f7f7f7 !important;
+  border: 1px solid #ccc !important;
+  border-bottom-color: #999 !important;
+  border-bottom-width: 3px !important;
+  border-radius: 3px !important;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.2), 0 0 0 2px #fff inset !important;
+  margin: 0 0.2em !important;
+  white-space: nowrap !important;
 }
 
-/* --- Table Styles (Dark Mode) --- */
 .prose.prose-invert :where(th, td):not(:where([class~=not-prose] *)) {
   border-color: theme('colors.border.base');
   padding: 0.5rem 0.75rem;
 }
+
 .prose.prose-invert :where(thead th):not(:where([class~=not-prose] *)) {
   background-color: theme('colors.surface.panel') !important;
   color: theme('colors.content.primary') !important;
   border-color: theme('colors.border.base');
 }
 
-/* --- 強制 Markdown 預覽為全白文字 (螢幕顯示用) --- */
+.prose.prose-invert tbody td:first-child:has(strong) {
+  background-color: theme('colors.surface.panel');
+  color: theme('colors.content.primary');
+}
+
 .prose.prose-invert {
   color: theme('colors.content.primary') !important;
 }
@@ -70,154 +101,169 @@
   color: theme('colors.brand.DEFAULT') !important;
 }
 
+.prose ol {
+  list-style-type: decimal;
+}
+.prose ol ol {
+  list-style-type: lower-alpha !important;
+}
+.prose ol ol ol {
+  list-style-type: lower-roman !important;
+}
+
+.prose.prose-invert :not(pre) > code {
+  color: #333 !important;                
+  background-color: #f3f4f6 !important; 
+  padding: 0.2em 0.4em !important;
+  font-size: 85% !important;
+  border-radius: 3px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-weight: normal !important;
+  border: 1px solid #e5e7eb !important; 
+  text-shadow: none !important;
+  margin: 0 0.1em;
+}
+
 /* ========================================================= */
-/* Print Styles (PDF Export Fixes) - 最終完美版 */
+/* Print Styles (PDF) */
 /* ========================================================= */
 @media print {
-  .non-printable {
+  /* 隱藏不必要的 UI 元素 */
+  .non-printable, .copy-button {
     display: none !important;
   }
 
-  /* 1. 佈局重置：確保所有容器可見且為流式佈局 */
-  body, html, #root, 
+  /* [關鍵設定] 頁面邊距
+    1. 使用 20mm 確保每一頁 (包含第二頁以後) 都有正確的物理邊距。
+    2. 瀏覽器會預設在這個邊距中填入 日期/標題/網址。
+    3. ***請務必在列印視窗中取消勾選「頁首與頁尾 (Headers and footers)」*** 以移除那些文字。
+       (CSS 無法在保留 20mm 邊距的同時強制移除那些文字，這是瀏覽器限制)
+  */
+  @page {
+    size: A4;
+    margin: 20mm !important; 
+  }
+
+  /* 重置容器設定，確保多頁列印 */
+  html, body {
+    width: 100%;
+    height: auto !important; 
+    min-height: 100%;
+    margin: 0 !important; /* body margin 歸零，由 @page 控制邊距 */
+    padding: 0 !important;
+    overflow: visible !important; 
+    background: #ffffff !important;
+  }
+
+  #root, 
   div[class*="flex-col"], 
   div[class*="flex-row"], 
-  div[class*="flex-1"],
-  div[style*="width:"] {
-    height: auto !important;
-    width: 100% !important;
-    overflow: visible !important;
+  div[class*="flex-1"] {
     display: block !important;
     position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
     background: #ffffff !important;
     color: #000000 !important;
   }
 
-  /* 2. 消除雜訊：將所有 Tailwind 邊框強制透明 (除了表格和代碼) */
+  /* 內容區域設定 */
+  .prose {
+    padding: 0 !important; /* 邊距已由 @page 處理 */
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    color: #000000 !important; 
+    background-color: #ffffff !important;
+    page-break-inside: auto !important; /* 允許長內容分頁 */
+  }
+  
+  /* 移除邊框與陰影 */
   div[class*="border-"], section[class*="border-"] {
     border-color: transparent !important;
     box-shadow: none !important;
   }
 
-  /* 3. 強制內文黑字：重寫 Prose 變數，這是最徹底的方法 */
-  .prose {
-    --tw-prose-body: #000000 !important;
-    --tw-prose-headings: #000000 !important;
-    --tw-prose-lead: #000000 !important;
-    --tw-prose-links: #000000 !important;
-    --tw-prose-bold: #000000 !important;
-    --tw-prose-counters: #000000 !important;
-    --tw-prose-bullets: #000000 !important;
-    --tw-prose-hr: #000000 !important;
-    --tw-prose-quotes: #000000 !important;
-    --tw-prose-quote-borders: #000000 !important;
-    --tw-prose-captions: #000000 !important;
-    color: #000000 !important; /* 雙重保險 */
-    max-width: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background-color: #ffffff !important;
-  }
-
-  .prose.prose-invert {
-    --tw-prose-body: #000000 !important;
-    --tw-prose-headings: #000000 !important;
-    --tw-prose-lead: #000000 !important;
-    --tw-prose-links: #000000 !important;
-    --tw-prose-bold: #000000 !important;
-    --tw-prose-counters: #000000 !important;
-    --tw-prose-bullets: #000000 !important;
-    --tw-prose-hr: #000000 !important;
-    --tw-prose-quotes: #000000 !important;
-    --tw-prose-quote-borders: #000000 !important;
-    --tw-prose-captions: #000000 !important;
-    color: #000000 !important;
-  }
-  
-  /* 4. 針對具體元素強制黑字 (排除 code) */
-  .prose :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote, table, th, td) {
-    color: #000000 !important;
-    text-shadow: none !important;
-  }
-  .prose.prose-invert :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote, table, th, td) {
-    color: #000000 !important;
-    text-shadow: none !important;
-  }
-
+  /* 強制文字顏色為黑色 */
+  .prose.prose-invert,
+  .prose :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote, table, th, td),
+  .prose.prose-invert :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote, table, th, td),
   .katex {
     color: #000000 !important;
+    text-shadow: none !important;
+    --tw-prose-body: #000000 !important;
+    --tw-prose-headings: #000000 !important;
+  }
+  .prose mark {
+    background-color: #ffff00 !important; /* 強制黃色背景 */
+    color: #000000 !important;            /* 強制黑色文字 */
+    
+    /* 關鍵屬性：強制瀏覽器列印出背景顏色，忽略省墨設定 */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* 4.1 隱藏瀏覽器列印時自動補上的 URL 尾註 */
+  /* 隱藏連結後的 URL 顯示 */
   a[href]:after {
     content: none !important;
   }
 
-  /* 5. 程式碼區塊 (PRE/CODE) 設定 */
-  /* 策略：背景淺灰，基底文字深灰，但【不覆寫 span 顏色】以保留 Tokenizer 效果 */
+  /* 代碼區塊列印樣式優化 - 改回深色模式 */
   .prose pre {
-    background-color: #f5f5f5 !important; /* 淺灰底，區隔代碼塊 */
-    border: 1px solid #ddd !important;     /* 加上細邊框 */
-    color: #000000 !important;             /* 基底文字設為深色 (非純黑) */
-    break-inside: avoid;                   /* 避免被分頁切斷 */
-    text-shadow: none !important;
+    background-color: #1e1e1e !important; /* VS Code 深色背景 */
+    border: 1px solid #333 !important;
+    color: #d4d4d4 !important; /* 淺色文字 */
+    border-radius: 6px;
+    box-shadow: none !important;
+    margin-top: 1em;
+    margin-bottom: 1em;
+    break-inside: avoid;
     
-    /* 強制瀏覽器列印背景色 */
+    /* 強制瀏覽器列印背景色 (重要) */
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* 讓 hljs 容器背景透明，避免蓋掉 pre 的背景 */
-  .prose pre code, .prose pre .hljs {
+  .prose pre code {
+    color: inherit !important; /* 繼承 pre 的淺色文字 */
     background: transparent !important;
-    color: inherit; /* 繼承 pre 的基底顏色，除非被 span 覆蓋 */
+    text-shadow: none !important;
   }
 
-  /* 6. 表格樣式 */
+  /* 行內代碼樣式 (保持淺色背景，深色文字) */
+  .prose :not(pre) > code {
+    background-color: #f3f4f6 !important; 
+    color: #000 !important;                
+    border: 1px solid #e5e7eb !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 表格優化 */
   .prose table {
     border-collapse: collapse !important;
+    width: 100%;
+    break-inside: auto;
   }
+  
+  .prose tr {
+    break-inside: avoid;
+    break-after: auto;
+  }
+
   .prose th, .prose td {
-    border: 1px solid #000 !important; /* 列印時表格線條加深 */
+    border: 1px solid #000 !important;
     color: #000 !important;
+    background-color: transparent !important;
   }
 
-  /* 6.1 KBD 與 MARK 元素在列印時的樣式 */
-  .prose kbd {
-    background-color: #eeeeee !important;
-    color: #000000 !important;
-    padding: 0.1rem 0.4rem;
-    border-radius: 6px;
-    border: 0 solid #cccccc !important;
-    box-shadow: none !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    min-width: 1.5em;
-    font-weight: 500;
-    font-family: inherit;
-    white-space: nowrap;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  .prose mark {
-    background-color: #fffb8f !important;
-    color: #000000 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* 7. 分頁設定：移除瀏覽器預設 header/footer */
-  @page {
-    size: A4;
-    margin: 20mm;
-    @top-center { content: ''; }
-    @bottom-center { content: ''; }
+  .prose th {
+    background-color: #eee !important;
+    font-weight: bold !important;
   }
 }
 
-/* Copy Button Styles */
 .code-block-with-copy { position: relative; }
 .copy-button {
   @apply bg-surface-panel/80 text-content-primary border border-border-subtle;
