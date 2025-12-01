@@ -195,6 +195,14 @@ textarea, pre, code {
     --tw-prose-body: #000000 !important;
     --tw-prose-headings: #000000 !important;
   }
+  .prose mark {
+    background-color: #ffff00 !important; /* 強制黃色背景 */
+    color: #000000 !important;            /* 強制黑色文字 */
+    
+    /* 關鍵屬性：強制瀏覽器列印出背景顏色，忽略省墨設定 */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 
   /* 隱藏連結後的 URL 顯示 */
   a[href]:after {
