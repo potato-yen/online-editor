@@ -140,16 +140,25 @@ export default function MarkdownToolbar({
         <DropdownItem onClick={() => onMathInsert('\\alpha', '', '')}>Alpha (α)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\beta', '', '')}>Beta (β)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\lambda', '', '')}>Lambda (λ)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\omega', '', '')}>Omega (ω)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\Omega', '', '')}>Omega (Ω)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\Delta', '', '')}>Delta (Δ)</DropdownItem>
+        <div className="my-1 border-t border-border-base" />
         <DropdownItem onClick={() => onMathInsert('\\times', '', '')}>Times (×)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\div', '', '')}>Divide (÷)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\cdot', '', '')}>Dot (·)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\infty', '', '')}>Infinity (∞)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\pm', '', '')}>Plus/Minus (±)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\approx', '', '')}>Approx (≈)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\leq', '', '')}>Less Eq (≤)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\geq', '', '')}>Greater Eq (≥)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\to', '', '')}>Arrow (→)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\neq', '', '')}>Not Equal (≠)</DropdownItem>
       </Dropdown>
 
       <Dropdown label="Calculus">
+        <DropdownItem onClick={() => onMathInsert('\\nabla', '', '')}>Gradient (∇)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\partial', '', '')}>Partial (∂)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\sum_{i=1}^{', '}{x_i}', 'n')}>Summation (Σ)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\int_{', '}^{b}{f(x)dx}', 'a')}>Integral (∫)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\lim_{x \\to ', '}{f(x)}', '0')}>Limit (lim)</DropdownItem>

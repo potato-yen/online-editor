@@ -56,6 +56,75 @@ textarea, pre, code {
   @apply bg-surface-elevated rounded-full hover:bg-content-muted transition-colors;
 }
 
+/* [全域預覽區修正] - 針對一般模式下的預覽 */
+.prose {
+  /* 強制所有內容換行，避免撐開容器 */
+  overflow-wrap: anywhere !important; 
+  word-break: break-word !important; 
+  word-wrap: break-word !important;
+  max-width: 100%; /* 確保不超過父容器 */
+}
+
+/* 強制預覽區的程式碼區塊自動換行 */
+.prose pre {
+  white-space: pre-wrap !important;       
+  word-break: break-all !important;      
+  overflow-wrap: anywhere !important;    
+  min-width: 0;                           
+  max-width: 100%;
+}
+
+/* [KEY FIX] 確保 pre 內部的 code 也能換行 */
+.prose pre code {
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+  overflow-wrap: anywhere !important;
+  display: block; /* 讓 code 佔滿 pre 的寬度 */
+  width: 100%;
+}
+
+/* 確保行內代碼也能換行 */
+.prose :not(pre) > code {
+  word-break: break-all !important;
+  overflow-wrap: anywhere !important;
+  white-space: pre-wrap !important; /* 行內代碼也允許換行 */
+}
+
+/* [NEW] KaTeX 數學公式全域強制換行設定 (螢幕預覽 + 列印) */
+/* 這原本只在 @media print，現在移出來讓預覽區也能看到換行效果 */
+.katex-display {
+  overflow: visible !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 1em 0 !important;
+  display: block !important; 
+}
+
+.katex, 
+.katex-html, 
+.katex-display > .katex,
+.katex .base,
+.katex .mord,
+.katex .mbin,
+.katex .mrel {
+  white-space: normal !important;       /* 允許換行 */
+  overflow-wrap: anywhere !important;   /* 在任何地方斷行，包含長單字 */
+  word-break: break-all !important;     /* 針對無空白連續字串強制斷行 */
+  text-indent: 0 !important;
+  max-width: 100% !important;           /* 限制最大寬度 */
+}
+
+.katex .base {
+  margin-top: 5px !important;
+  margin-bottom: 5px !important;
+  display: inline !important; /* 讓內容像文字一樣流動 */
+  width: auto !important;
+}
+
+.katex .frac-line {
+  max-width: 100% !important;
+}
+
 .prose kbd {
   display: inline-block !important;
   padding: 0.1em 0.6em !important;
@@ -128,28 +197,20 @@ textarea, pre, code {
 /* Print Styles (PDF) */
 /* ========================================================= */
 @media print {
-  /* 隱藏不必要的 UI 元素 */
   .non-printable, .copy-button {
     display: none !important;
   }
 
-  /* [關鍵設定] 頁面邊距
-    1. 使用 20mm 確保每一頁 (包含第二頁以後) 都有正確的物理邊距。
-    2. 瀏覽器會預設在這個邊距中填入 日期/標題/網址。
-    3. ***請務必在列印視窗中取消勾選「頁首與頁尾 (Headers and footers)」*** 以移除那些文字。
-       (CSS 無法在保留 20mm 邊距的同時強制移除那些文字，這是瀏覽器限制)
-  */
   @page {
     size: A4;
     margin: 20mm !important; 
   }
 
-  /* 重置容器設定，確保多頁列印 */
   html, body {
     width: 100%;
     height: auto !important; 
     min-height: 100%;
-    margin: 0 !important; /* body margin 歸零，由 @page 控制邊距 */
+    margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important; 
     background: #ffffff !important;
@@ -168,24 +229,26 @@ textarea, pre, code {
     color: #000000 !important;
   }
 
-  /* 內容區域設定 */
   .prose {
-    padding: 0 !important; /* 邊距已由 @page 處理 */
+    padding: 0 !important; 
     margin: 0 auto !important;
     width: 100% !important;
     max-width: 100% !important;
     color: #000000 !important; 
     background-color: #ffffff !important;
-    page-break-inside: auto !important; /* 允許長內容分頁 */
+    page-break-inside: auto !important;
+
+    /* 全域文字強制換行 */
+    overflow-wrap: anywhere !important; 
+    word-break: break-all !important;
+    white-space: normal !important;
   }
   
-  /* 移除邊框與陰影 */
   div[class*="border-"], section[class*="border-"] {
     border-color: transparent !important;
     box-shadow: none !important;
   }
 
-  /* 強制文字顏色為黑色 */
   .prose.prose-invert,
   .prose :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote, table, th, td),
   .prose.prose-invert :where(h1, h2, h3, h4, h5, h6, p, li, strong, em, blockquote, table, th, td),
@@ -195,43 +258,45 @@ textarea, pre, code {
     --tw-prose-body: #000000 !important;
     --tw-prose-headings: #000000 !important;
   }
+  
   .prose mark {
-    background-color: #ffff00 !important; /* 強制黃色背景 */
-    color: #000000 !important;            /* 強制黑色文字 */
-    
-    /* 關鍵屬性：強制瀏覽器列印出背景顏色，忽略省墨設定 */
+    background-color: #ffff00 !important;
+    color: #000000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* 隱藏連結後的 URL 顯示 */
   a[href]:after {
     content: none !important;
   }
 
-  /* 代碼區塊列印樣式優化 - 改回深色模式 */
   .prose pre {
-    background-color: #1e1e1e !important; /* VS Code 深色背景 */
+    background-color: #1e1e1e !important;
     border: 1px solid #333 !important;
-    color: #d4d4d4 !important; /* 淺色文字 */
+    color: #d4d4d4 !important;
     border-radius: 6px;
     box-shadow: none !important;
     margin-top: 1em;
     margin-bottom: 1em;
     break-inside: avoid;
-    
-    /* 強制瀏覽器列印背景色 (重要) */
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+
+    white-space: pre-wrap !important;
+    word-break: break-all !important; /* 修正：使用 break-all */
+    overflow-wrap: anywhere !important; /* 修正：使用 anywhere */
+    overflow: visible !important;
   }
 
   .prose pre code {
-    color: inherit !important; /* 繼承 pre 的淺色文字 */
+    color: inherit !important;
     background: transparent !important;
     text-shadow: none !important;
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+    overflow-wrap: anywhere !important;
   }
 
-  /* 行內代碼樣式 (保持淺色背景，深色文字) */
   .prose :not(pre) > code {
     background-color: #f3f4f6 !important; 
     color: #000 !important;                
@@ -240,7 +305,6 @@ textarea, pre, code {
     print-color-adjust: exact !important;
   }
 
-  /* 表格優化 */
   .prose table {
     border-collapse: collapse !important;
     width: 100%;

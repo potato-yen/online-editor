@@ -85,6 +85,7 @@ export default function LatexToolbar({
         <DropdownItem onClick={() => onSimpleInsert('$', '$', 'E=mc^2')}>Inline Math $</DropdownItem>
         <DropdownItem onClick={() => onSimpleInsert('$$\n', '\n$$', 'E=mc^2')}>Block Math $$</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\sqrt[', ']{x}', 'n')}>Nth Root</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\text{', '}', 'text')}>Text Mode</DropdownItem>
       </Dropdown>
 
       <Dropdown label="Greek & Symbols">
@@ -92,20 +93,41 @@ export default function LatexToolbar({
         <DropdownItem onClick={() => onMathInsert('\\theta', '', '')}>Theta (θ)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\alpha', '', '')}>Alpha (α)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\beta', '', '')}>Beta (β)</DropdownItem>
-        <DropdownItem onClick={() => onMathInsert('\\lambda', '', '')}>Lambda (λ)</DropdownItem> {/* Added */}
+        <DropdownItem onClick={() => onMathInsert('\\lambda', '', '')}>Lambda (λ)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\omega', '', '')}>Omega (ω)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\Omega', '', '')}>Omega (Ω)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\Delta', '', '')}>Delta (Δ)</DropdownItem>
+        
+        <div className="my-1 border-t border-border-base" />
+        
         <DropdownItem onClick={() => onMathInsert('\\times', '', '')}>Times (×)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\div', '', '')}>Divide (÷)</DropdownItem>
-        <DropdownItem onClick={() => onMathInsert('\\infty', '', '')}>Infinity (∞)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\cdot', '', '')}>Dot (·)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\pm', '', '')}>Plus/Minus (±)</DropdownItem>
-        <DropdownItem onClick={() => onMathInsert('\\to', '', '')}>Arrow (→)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\approx', '', '')}>Approx (≈)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\neq', '', '')}>Not Equal (≠)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\leq', '', '')}>Less Eq (≤)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\geq', '', '')}>Greater Eq (≥)</DropdownItem>
+        
+        <div className="my-1 border-t border-border-base" />
+
+        <DropdownItem onClick={() => onMathInsert('\\infty', '', '')}>Infinity (∞)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\to', '', '')}>Arrow (→)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\in', '', '')}>Element of (∈)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\forall', '', '')}>For all (∀)</DropdownItem>
       </Dropdown>
 
       <Dropdown label="Calculus">
+        <DropdownItem onClick={() => onMathInsert('\\nabla', '', '')}>Gradient (∇)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\partial', '', '')}>Partial (∂)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\sum_{i=1}^{', '}{x_i}', 'n')}>Summation (Σ)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\int_{', '}^{b}{f(x)dx}', 'a')}>Integral (∫)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\lim_{x \\to ', '}{f(x)}', '0')}>Limit (lim)</DropdownItem>
+        <div className="my-1 border-t border-border-base" />
+        <DropdownItem onClick={() => onMathInsert('\\sin', '', '')}>Sin</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\cos', '', '')}>Cos</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\log', '', '')}>Log</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\ln', '', '')}>Ln</DropdownItem>
       </Dropdown>
     </div>
   )
