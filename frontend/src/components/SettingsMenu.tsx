@@ -95,6 +95,9 @@ export default function SettingsMenu({
     setIndentSize,
     autoSaveInterval,
     setAutoSaveInterval,
+    // [NEW]
+    autoCloseBrackets,
+    setAutoCloseBrackets,
   } = useEditorSettings()
   const [open, setOpen] = useState(false)
   const [section, setSection] = useState<SectionKey>('editor')
@@ -145,6 +148,31 @@ export default function SettingsMenu({
     </button>
   )
 
+  // [NEW]
+  const renderAutoCloseSwitch = () => (
+    <button
+      type="button"
+      // 使用 stopPropagation 避免觸發外層可能的點擊事件
+      onClick={(e) => {
+        e.stopPropagation();
+        setAutoCloseBrackets(!autoCloseBrackets);
+      }}
+      role="switch"
+      aria-checked={autoCloseBrackets}
+      className={cn(
+        'w-12 h-6 rounded-full flex items-center px-1 transition-colors',
+        autoCloseBrackets ? 'bg-brand-active' : 'bg-border-base'
+      )}
+    >
+      <span
+        className={cn(
+          'bg-white w-4 h-4 rounded-full shadow transition-transform',
+          autoCloseBrackets ? 'translate-x-6' : 'translate-x-0'
+        )}
+      />
+    </button>
+  )
+
   const autoSaveValue =
     autoSaveInterval === null ? 'off' : String(autoSaveInterval)
 
@@ -172,7 +200,7 @@ export default function SettingsMenu({
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.076.124l1.216-.456a1.125 1.125 0 011.37.491l1.298 2.247a1.125 1.125 0 01-.26 1.43l-1.005.828c-.293.24-.438.613-.431.992.003.084.005.168.005.253s-.002.169-.005.253c-.007.379.138.752.431.993l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.49l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.52 6.52 0 01-.22.127c-.332.184-.582.496-.644.87l-.213 1.281c-.09.542-.56.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49L4.5 15.345a1.125 1.125 0 01.26-1.43l1.004-.828c.292-.24.437-.613.43-.992A6.932 6.932 0 016.25 12c0-.085.002-.169.005-.253.007-.379-.138-.752-.43-.993l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.217.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"
+              d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.076.124l1.216-.456a1.125 1.125 0 011.37.491l1.298 2.247a1.125 1.125 0 01-.26 1.43l-1.005.828c-.293.24-.438.613-.431.992.003.084.005.168.005.253s-.002.169-.005.253c-.007.379.138.752.431.993l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.49l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.52 6.52 0 01-.22.127c-.332.184-.582.496-.644.87l-.213 1.281c-.09.542-.56.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49L4.5 15.345a1.125 1.125 0 01.26-1.43l1.004-.828c.292-.24.437-.613.43-.992A6.932 6.932 0 016.25 12c0-.085.002-.169.005-.253.007-.379-.138-.752-.43-.993l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.217.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"
             />
             <path
               strokeLinecap="round"
@@ -256,6 +284,19 @@ export default function SettingsMenu({
                   </p>
                 </div>
                 {renderWordWrapSwitch()}
+              </div>
+
+              {/* [NEW] */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-content-muted">
+                    Auto-Close Brackets
+                  </p>
+                  <p className="text-sm">
+                    {autoCloseBrackets ? 'Enabled' : 'Disabled'}
+                  </p>
+                </div>
+                {renderAutoCloseSwitch()}
               </div>
             </SettingsSection>
 

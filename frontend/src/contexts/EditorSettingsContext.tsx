@@ -15,6 +15,9 @@ type EditorSettingsContextValue = {
   setIndentSize: (size: number) => void
   autoSaveInterval: number | null
   setAutoSaveInterval: (value: number | null) => void
+  // [NEW]
+  autoCloseBrackets: boolean
+  setAutoCloseBrackets: (value: boolean) => void
 }
 
 const EditorSettingsContext = createContext<
@@ -30,6 +33,8 @@ export function EditorSettingsProvider({ children }: ProviderProps) {
   const [wordWrap, setWordWrap] = useState(true)
   const [indentSize, setIndentSizeState] = useState<2 | 4>(4)
   const [autoSaveInterval, setAutoSaveInterval] = useState<number | null>(3000)
+  // 預設開啟
+  const [autoCloseBrackets, setAutoCloseBrackets] = useState(true)
 
   const setIndentSize = useCallback((size: number) => {
     setIndentSizeState(size === 2 ? 2 : 4)
@@ -45,6 +50,8 @@ export function EditorSettingsProvider({ children }: ProviderProps) {
       setIndentSize,
       autoSaveInterval,
       setAutoSaveInterval,
+      autoCloseBrackets,
+      setAutoCloseBrackets,
     }),
     [
       fontSize,
@@ -52,6 +59,8 @@ export function EditorSettingsProvider({ children }: ProviderProps) {
       indentSize,
       setIndentSize,
       autoSaveInterval,
+      // 確保這裡有加入依賴，這樣 Context 才會發出更新通知
+      autoCloseBrackets,
     ]
   )
 

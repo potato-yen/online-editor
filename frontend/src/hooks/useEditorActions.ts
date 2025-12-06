@@ -6,6 +6,8 @@ type UseEditorActionsOptions = {
   onContentChange?: (text: string) => void
   setText: React.Dispatch<React.SetStateAction<string>>
   indentSize?: number
+  // [NEW]
+  autoCloseBrackets?: boolean
 }
 
 // 定義選取範圍的調整參數 (相對於插入內容的起始位置)
@@ -54,6 +56,8 @@ export function useEditorActions({
   onContentChange,
   setText,
   indentSize = 4,
+  // [NEW]
+  autoCloseBrackets = true,
 }: UseEditorActionsOptions) {
   const indentCharacters = useMemo(() => {
     const spaces = typeof indentSize === 'number' ? indentSize : 4
@@ -316,27 +320,12 @@ export function useEditorActions({
       
       setTimeout(() => {
         editor.focus()
-        // (FIXED) 修正選取邏輯：
-        // 如果原本是「游標」(selectionStart === selectionEnd)，則插入後應該還是游標，停在文字後面
-        // 如果原本是「選取範圍」，則維持選取整塊
-        
         const isSingleCursor = selectionStart === selectionEnd;
 
         if (isSingleCursor) {
-            // 游標模式：游標移動到縮排後的文字後面
-            // 新位置 = 原位置 + (第一行的縮排變化)
-            // 但因為我們是替換整行，所以簡單計算：
-            // 如果是 indent，游標 + indentChars.length
-            // 如果是 outdent，游標可能 - indentChars.length (但不超過行首)
-            
-            // 簡單策略：單行縮排後，讓游標停在該行內容結束處 (即插入後的結束位置)
-            // 但這樣會導致連續按 Tab 時游標亂跑。
-            // 正確策略：游標應該跟著文字移動。
-            // 這裡為了簡化且修正 bug，我們讓單行縮排後「不選取」，游標停在行尾
             const newCursorPos = startLineIndex + newTextToInsert.length;
             editor.setSelectionRange(newCursorPos, newCursorPos);
         } else {
-            // 選取模式：重新選取被縮排的所有行
             const newLength = newTextToInsert.length
             editor.setSelectionRange(startLineIndex, startLineIndex + newLength)
         }
@@ -345,15 +334,12 @@ export function useEditorActions({
     [editorRef, indentCharacters]
   )
 
-  // -------------------------------------------------------------------
-  // 整合所有鍵盤事件：快捷鍵、Tab縮排、智慧列表、自動括號
-  // -------------------------------------------------------------------
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const editor = editorRef.current;
       if (!editor) return;
 
-      // 1. 快捷鍵 (Ctrl/Cmd + B/I/S)
+      // 1. 快捷鍵
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
         const key = e.key.toLowerCase();
         if (key === 'b') {
@@ -372,18 +358,16 @@ export function useEditorActions({
         }
       }
 
-      // 2. Tab 鍵 (縮排/反縮排)
+      // 2. Tab 鍵
       if (e.key === 'Tab') {
         e.preventDefault();
         const { selectionStart, selectionEnd } = editor;
         
-        // 單行且無選取時，直接插入 Tab (空格)
         if (selectionStart === selectionEnd && !e.shiftKey) {
            document.execCommand('insertText', false, indentCharacters);
            return;
         }
         
-        // 多行選取或 Shift+Tab 才執行整行縮排
         if (e.shiftKey) {
           handleIndent('outdent');
         } else {
@@ -392,7 +376,7 @@ export function useEditorActions({
         return;
       }
 
-      // 3. Enter 鍵 (智慧列表延續)
+      // 3. Enter 鍵
       if (e.key === 'Enter') {
         const { currentLine } = getCurrentLineInfo(editor);
         const match = currentLine.match(/^(\s*)([-*+]|\d+\.)\s+(\[[ x]\]\s)?/);
@@ -405,7 +389,6 @@ export function useEditorActions({
              const { lineStart, lineEnd } = getCurrentLineInfo(editor);
              editor.setSelectionRange(lineStart, lineEnd);
              document.execCommand('delete');
-             //document.execCommand('insertText', false, '\n'); 
              return;
           }
 
@@ -438,7 +421,8 @@ export function useEditorActions({
         '`': '`',
       };
 
-      if (Object.keys(pairs).includes(e.key)) {
+      // 只有在 autoCloseBrackets 為 true 時才執行
+      if (autoCloseBrackets && Object.keys(pairs).includes(e.key)) {
         e.preventDefault();
         const open = e.key;
         const close = pairs[open];
@@ -455,7 +439,7 @@ export function useEditorActions({
       }
       
       // 5. Backspace 智慧刪除
-      if (e.key === 'Backspace') {
+      if (autoCloseBrackets && e.key === 'Backspace') {
          const { selectionStart, selectionEnd, value } = editor;
          if (selectionStart === selectionEnd && selectionStart > 0) {
             const charBefore = value[selectionStart - 1];
@@ -469,7 +453,8 @@ export function useEditorActions({
          }
       }
     },
-    [editorRef, handleIndent, indentCharacters, getCurrentLineInfo, handleSmartInline]
+    // [FIXED] 絕對關鍵：autoCloseBrackets 必須在此陣列中，否則函式閉包會鎖死在舊值
+    [editorRef, handleIndent, indentCharacters, getCurrentLineInfo, handleSmartInline, autoCloseBrackets]
   )
 
   return {
