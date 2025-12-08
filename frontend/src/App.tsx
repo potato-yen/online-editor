@@ -25,7 +25,7 @@ import SubscriptModal from './components/SubscriptModal'
 import MatrixModal from './components/MatrixModal' 
 import AlignedModal from './components/AlignedModal'
 import LinkModal from './components/LinkModal'
-import ImageModal from './components/ImageModal' // (NEW)
+import ImageModal from './components/ImageModal' 
 
 // Hooks
 import { useEditorActions } from './hooks/useEditorActions'
@@ -72,7 +72,9 @@ export function EditorCore({
   const [mode] = useState<Mode>(initialMode)
   const defaultText = ''
   const [text, setText] = useState<string>(() => initialText ?? defaultText)
-  const { fontSize, wordWrap, indentSize } = useEditorSettings()
+  
+  // [FIXED] 取得 autoCloseBrackets
+  const { fontSize, wordWrap, indentSize, autoCloseBrackets } = useEditorSettings()
 
   const previewRef = useRef<HTMLDivElement | null>(null)
   const editorRef = useRef<HTMLTextAreaElement | null>(null)
@@ -80,20 +82,28 @@ export function EditorCore({
   // Hooks
   const { renderedHTML } = useMarkdownRenderer({ text, mode, previewRef })
   const { splitPos, containerRef, handleResizeStart } = useSplitPane()
+  
+  // [FIXED] 傳遞 autoCloseBrackets
   const {
     handleSmartBlock,
     handleSmartInline,
     handleSimpleInsert,
     handleMathInsert,
     handleTabKey,
-  } = useEditorActions({ editorRef, onContentChange, setText, indentSize })
+  } = useEditorActions({ 
+    editorRef, 
+    onContentChange, 
+    setText, 
+    indentSize,
+    autoCloseBrackets // 這裡傳入
+  })
 
   const {
-    isTableModalOpen, isSuperscriptModalOpen, isSubscriptModalOpen, isMatrixModalOpen, isAlignedModalOpen, isLinkModalOpen, isImageModalOpen, // (NEW)
-    linkInitialText, imageInitialText, // (NEW)
-    onCloseTable, onCloseSuperscript, onCloseSubscript, onCloseMatrix, onCloseAligned, onCloseLink, onCloseImage, // (NEW)
-    onRequestTable, onRequestSuperscript, onRequestSubscript, onRequestMatrix, onRequestAligned, onRequestLink, onRequestImage, // (NEW)
-    onCreateTable, onCreateSuperscript, onCreateSubscript, onCreateMatrix, onCreateAligned, onCreateLink, onCreateImage, // (NEW)
+    isTableModalOpen, isSuperscriptModalOpen, isSubscriptModalOpen, isMatrixModalOpen, isAlignedModalOpen, isLinkModalOpen, isImageModalOpen,
+    linkInitialText, imageInitialText,
+    onCloseTable, onCloseSuperscript, onCloseSubscript, onCloseMatrix, onCloseAligned, onCloseLink, onCloseImage,
+    onRequestTable, onRequestSuperscript, onRequestSubscript, onRequestMatrix, onRequestAligned, onRequestLink, onRequestImage,
+    onCreateTable, onCreateSuperscript, onCreateSubscript, onCreateMatrix, onCreateAligned, onCreateLink, onCreateImage,
   } = useEditorModals({ 
     editorRef, 
     handleSimpleInsert, 
@@ -170,7 +180,7 @@ export function EditorCore({
       onRequestMatrix={onRequestMatrix}
       onRequestAligned={onRequestAligned}
       onRequestLink={onRequestLink}
-      onRequestImage={onRequestImage} // (NEW)
+      onRequestImage={onRequestImage}
     />
   ) : (
     <LatexToolbar 
@@ -206,7 +216,6 @@ export function EditorCore({
           onInsert={onCreateLink} 
           initialText={linkInitialText}
         />
-        {/* (NEW) */}
         <ImageModal
           isOpen={isImageModalOpen}
           onClose={onCloseImage}
