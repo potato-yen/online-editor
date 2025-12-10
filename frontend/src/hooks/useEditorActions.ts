@@ -20,7 +20,8 @@ type SimpleInsertHandler = (
   templateStart: string,
   templateEnd: string,
   placeholder: string,
-  selectionOptions?: SelectionOptions
+  selectionOptions?: SelectionOptions,
+  requiredPackage?: string // [NEW] 支援自動引入套件
 ) => void
 
 type SmartBlockType = 'heading' | 'list' | 'quote' | 'task'
@@ -51,12 +52,47 @@ function isCursorInMath(text: string, pos: number): boolean {
   return inBlockMath || inInlineMath;
 }
 
+// [NEW] 檢查並插入 Package 的輔助函式
+// 回傳: { newText: string, offset: number } 如果有修改，否則回傳 null
+function injectPackage(text: string, pkg: string): { newText: string; offset: number } | null {
+  // 1. 檢查是否已經引入 (簡單 Regex 檢查)
+  // 支援 \usepackage{pkg}, \usepackage[opt]{pkg}, \usepackage{pkg, other}
+  // 這裡使用較寬鬆的檢查，只要大括號內包含該單字即可
+  const pkgRegex = new RegExp(`\\\\usepackage(?:\\[[^\\]]*\\])?\\{[^\\}]*\\b${pkg}\\b[^\\}]*\\}`);
+  if (pkgRegex.test(text)) {
+    return null; // 已經存在
+  }
+
+  // 2. 尋找插入點：優先找 \begin{document} 之前
+  const docStartRegex = /\\begin\{document\}/;
+  const matchDoc = docStartRegex.exec(text);
+  
+  if (matchDoc) {
+    const insertPos = matchDoc.index;
+    const insertion = `\\usepackage{${pkg}}\n`;
+    const newText = text.slice(0, insertPos) + insertion + text.slice(insertPos);
+    return { newText, offset: insertion.length };
+  }
+  
+  // 3. 備案：找 \documentclass 之後
+  const classRegex = /(\\documentclass\[.*?\]\{.*?\})|(\\documentclass\{.*?\})/;
+  const matchClass = classRegex.exec(text);
+  if (matchClass) {
+     const insertPos = matchClass.index + matchClass[0].length;
+     const insertion = `\n\\usepackage{${pkg}}`;
+     const newText = text.slice(0, insertPos) + insertion + text.slice(insertPos);
+     return { newText, offset: insertion.length };
+  }
+
+  // 找不到合適位置 (例如只是片段文字)，不動作
+  return null; 
+}
+
 export function useEditorActions({
   editorRef,
   onContentChange,
   setText,
   indentSize = 4,
-  // [NEW]
   autoCloseBrackets = true,
 }: UseEditorActionsOptions) {
   const indentCharacters = useMemo(() => {
@@ -167,9 +203,67 @@ export function useEditorActions({
   )
 
   const handleSimpleInsert: SimpleInsertHandler = useCallback(
-    (templateStart, templateEnd, placeholder, selectionOptions) => {
+    (templateStart, templateEnd, placeholder, selectionOptions, requiredPackage) => {
       const editor = editorRef.current
       if (!editor) return
+      
+      // [NEW] 1. 處理 Package 自動引入
+      let offset = 0;
+      if (requiredPackage) {
+        const result = injectPackage(editor.value, requiredPackage);
+        if (result) {
+          const { newText, offset: insertedLen } = result;
+          
+          offset = insertedLen;
+          
+          // 如果有插入 package，改用直接替換內容的方式
+          const { selectionStart, selectionEnd } = editor;
+          const adjustedStart = selectionStart + offset;
+          const adjustedEnd = selectionEnd + offset;
+          
+          const selectedText = newText.substring(adjustedStart, adjustedEnd);
+          let textToInsert = '';
+          const isSymbolReplacement = templateEnd === '';
+
+          if (selectedText) {
+            if (isSymbolReplacement) {
+              textToInsert = templateStart + templateEnd;
+            } else {
+              textToInsert = templateStart + selectedText + templateEnd;
+            }
+          } else {
+            textToInsert = templateStart + placeholder + templateEnd;
+          }
+          
+          const finalText = newText.substring(0, adjustedStart) + textToInsert + newText.substring(adjustedEnd);
+          
+          setText(finalText);
+          onContentChange?.(finalText);
+          
+          // 計算新的選取範圍
+          let newCursorStart: number;
+          let newCursorEnd: number;
+          
+          if (selectionOptions) {
+            newCursorStart = adjustedStart + selectionOptions.relativeStart;
+            newCursorEnd = newCursorStart + selectionOptions.relativeLength;
+          } else if (selectedText && !isSymbolReplacement) {
+             newCursorStart = newCursorEnd = adjustedStart + textToInsert.length;
+          } else {
+             newCursorStart = adjustedStart + templateStart.length;
+             newCursorEnd = isSymbolReplacement ? newCursorStart : newCursorStart + placeholder.length;
+          }
+          
+          setTimeout(() => {
+            editor.focus();
+            editor.setSelectionRange(newCursorStart, newCursorEnd);
+          }, 0);
+          
+          return;
+        }
+      }
+
+      // 如果不需要引入 package，或已經存在，走原本的路徑 (保留 Undo)
       const { selectionStart, selectionEnd, value } = editor
       const selectedText = value.substring(selectionStart, selectionEnd)
       
@@ -229,7 +323,7 @@ export function useEditorActions({
   )
 
   const handleMathInsert = useCallback(
-    (templateStart: string, templateEnd: string, placeholder: string, selectionOptions?: SelectionOptions) => {
+    (templateStart: string, templateEnd: string, placeholder: string, selectionOptions?: SelectionOptions, requiredPackage?: string) => {
       const editor = editorRef.current;
       if (!editor) return;
       
@@ -269,7 +363,7 @@ export function useEditorActions({
         relativeLength: selectionOptions.relativeLength
       } : undefined;
 
-      handleSimpleInsert(finalStart, finalEnd, placeholder, adjustedOptions);
+      handleSimpleInsert(finalStart, finalEnd, placeholder, adjustedOptions, requiredPackage);
     },
     [handleSimpleInsert, editorRef, getCurrentLineInfo]
   );
@@ -453,7 +547,6 @@ export function useEditorActions({
          }
       }
     },
-    // [FIXED] 絕對關鍵：autoCloseBrackets 必須在此陣列中，否則函式閉包會鎖死在舊值
     [editorRef, handleIndent, indentCharacters, getCurrentLineInfo, handleSmartInline, autoCloseBrackets]
   )
 

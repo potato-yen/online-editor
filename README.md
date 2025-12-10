@@ -40,7 +40,8 @@ chmod +x start.sh stop.drop-sh
 ```bash
 ./stop.sh
 ```
-
+上述為使用shell script 啟動 docker 的方式，若已使用上方的指令，則以下皆可忽略。
+---
 ### 1. 啟動後端
 
 ```bash

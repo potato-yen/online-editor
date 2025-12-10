@@ -41,7 +41,8 @@ export default function LatexToolbar({
       <div className="flex items-center gap-0.5 mr-2 border-r border-border-subtle pr-2">
         <ToolbarBtn 
           label="Fraction" 
-          onClick={() => onMathInsert('\\frac{', '}{}', 'a')} 
+          // 這裡加入 'amsmath' 作為範例，雖然基本 LaTeX 支援 \frac，但複雜數學通常需要 amsmath
+          onClick={() => onMathInsert('\\frac{', '}{}', 'a', undefined, 'amsmath')} 
           icon={<span className="font-serif text-sm">½</span>} 
         />
         <ToolbarBtn 
@@ -85,7 +86,7 @@ export default function LatexToolbar({
         <DropdownItem onClick={() => onSimpleInsert('$', '$', 'E=mc^2')}>Inline Math $</DropdownItem>
         <DropdownItem onClick={() => onSimpleInsert('$$\n', '\n$$', 'E=mc^2')}>Block Math $$</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\sqrt[', ']{x}', 'n')}>Nth Root</DropdownItem>
-        <DropdownItem onClick={() => onMathInsert('\\text{', '}', 'text')}>Text Mode</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\text{', '}', 'text', undefined, 'amsmath')}>Text Mode</DropdownItem>
       </Dropdown>
 
       <Dropdown label="Greek & Symbols">
@@ -106,8 +107,8 @@ export default function LatexToolbar({
         <DropdownItem onClick={() => onMathInsert('\\pm', '', '')}>Plus/Minus (±)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\approx', '', '')}>Approx (≈)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\neq', '', '')}>Not Equal (≠)</DropdownItem>
-        <DropdownItem onClick={() => onMathInsert('\\leq', '', '')}>Less Eq (≤)</DropdownItem>
-        <DropdownItem onClick={() => onMathInsert('\\geq', '', '')}>Greater Eq (≥)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\leq', '', '', undefined, 'amssymb')}>Less Eq (≤)</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\geq', '', '', undefined, 'amssymb')}>Greater Eq (≥)</DropdownItem>
         
         <div className="my-1 border-t border-border-base" />
 
