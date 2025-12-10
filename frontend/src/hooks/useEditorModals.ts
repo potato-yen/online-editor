@@ -85,7 +85,8 @@ export function useEditorModals({
       const finalTemplateStart = templateStart + matrixBody.substring(0, placeholderIndex)
       const finalTemplateEnd = matrixBody.substring(placeholderIndex + placeholder.length) + '\\end{bmatrix}'
       
-      handleMathInsert(finalTemplateStart, finalTemplateEnd, placeholder)
+      // [MODIFIED] Matrix 需要 amsmath
+      handleMathInsert(finalTemplateStart, finalTemplateEnd, placeholder, undefined, 'amsmath')
       setIsMatrixModalOpen(false)
     },
     [handleMathInsert]
@@ -104,7 +105,9 @@ export function useEditorModals({
       });
 
       const templateStart = '\\begin{aligned}\n' + alignedBody + '\n\\end{aligned}';
-      handleMathInsert(templateStart, '', '')
+      
+      // [MODIFIED] Aligned 需要 amsmath
+      handleMathInsert(templateStart, '', '', undefined, 'amsmath')
       setIsAlignedModalOpen(false)
     },
     [handleMathInsert]
@@ -128,8 +131,6 @@ export function useEditorModals({
     [handleSimpleInsert]
   )
 
-  // (FIXED) 智慧型上標修正
-  // 選取文字 (例如 "x") 應作為底數，變成 x^{k}，並反白 "k"
   const handleRequestSuperscript = useCallback(() => {
     const editor = editorRef.current
     if (!editor) return
@@ -140,20 +141,11 @@ export function useEditorModals({
       return
     }
 
-    // 1. 取得選取文字 (Base，例如 "x")
     const base = value.substring(selectionStart, selectionEnd)
-    const placeholder = 'k'; // 預設次方符號
+    const placeholder = 'k';
     
-    // 2. 準備插入字串： base^{placeholder}
-    //    我們使用「取代」模式 (templateEnd 為空)，直接用新字串替換選取範圍
     const templateStart = `${base}^{`;
     const templateEnd = `}`;
-    
-    // 3. 計算游標/反白位置
-    //    我們希望反白 placeholder ('k')
-    //    'k' 的位置在 templateStart 之後
-    //    relativeStart: templateStart.length
-    //    relativeLength: placeholder.length
     
     handleMathInsert(templateStart, templateEnd, placeholder, {
       relativeStart: templateStart.length, 
@@ -161,7 +153,6 @@ export function useEditorModals({
     })
   }, [editorRef, handleMathInsert])
 
-  // (FIXED) 智慧型下標修正：同上邏輯
   const handleRequestSubscript = useCallback(() => {
     const editor = editorRef.current
     if (!editor) return
