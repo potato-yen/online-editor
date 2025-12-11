@@ -7,9 +7,11 @@ import { supabase } from '../lib/supabaseClient'
 function resolveBackendUrl() {
   const envUrl = import.meta.env.VITE_BACKEND_URL?.trim()
   if (envUrl) {
-    return envUrl.replace(/\/$/, '')
+    const sanitized = envUrl.replace(/\/$/, '')
+    const baseUrl = sanitized.replace(/\/compile-latex$/, '')
+    return baseUrl
   }
-  
+
   // 智慧預設：嘗試推斷本地後端位置
   if (typeof window !== 'undefined') {
     try {
@@ -21,7 +23,7 @@ function resolveBackendUrl() {
       // ignore
     }
   }
-  
+
   return 'http://localhost:3001'
 }
 

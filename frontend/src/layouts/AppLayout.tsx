@@ -17,7 +17,7 @@ export default function AppLayout({ children, user, onLogout }: AppLayoutProps) 
   // 取得使用者首字 (Avatar 用)
   const username = user?.user_metadata?.username || user?.email || '?';
   const initial = username.charAt(0).toUpperCase();
-  const { onModifyUsername, onChangePassword, onDeleteAccount } = useAccountActions();
+  const { updateUsername, updatePassword, deleteAccount } = useAccountActions();
 
   return (
     <div className="flex h-screen w-full bg-surface-base overflow-hidden">
@@ -52,9 +52,9 @@ export default function AppLayout({ children, user, onLogout }: AppLayoutProps) 
           
           <SettingsMenu
             placement="right"
-            onModifyUsername={onModifyUsername}
-            onChangePassword={onChangePassword}
-            onDeleteAccount={onDeleteAccount}
+            onModifyUsername={updateUsername}
+            onChangePassword={updatePassword}
+            onDeleteAccount={deleteAccount}
             renderTrigger={({ toggle }) => (
               <button
                 type="button"
@@ -87,7 +87,7 @@ export default function AppLayout({ children, user, onLogout }: AppLayoutProps) 
             </div>
           </div>
           <button 
-            onClick={onLogout}
+            onClick={() => onLogout?.()}
             className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-medium text-content-secondary hover:text-status-error hover:bg-status-error/10 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">

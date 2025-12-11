@@ -13,6 +13,15 @@ echo "[Backend] 正在建置映像檔..."
 cd backend
 docker build -t latex-backend .
 
+# 決定是否載入 backend/.env
+BACKEND_ENV_ARGS=()
+if [ -f ".env" ]; then
+    echo "[Backend] 偵測到 .env，啟動容器時會自動載入。"
+    BACKEND_ENV_ARGS+=(--env-file .env)
+else
+    echo "[Backend] 警告：找不到 backend/.env，帳號刪除等需要 Supabase Service Role 的功能將無法使用。"
+fi
+
 echo "[Backend] 正在啟動容器..."
 docker rm -f latex-backend-container 2>/dev/null || true
 
@@ -30,6 +39,7 @@ docker run -d \
     --security-opt=no-new-privileges:true \
     --tmpfs /tmp \
     -v tectonic-cache:/root/.cache/Tectonic \
+    "${BACKEND_ENV_ARGS[@]}" \
     latex-backend
 
 echo "[Backend] 已啟動 (Port 3001)"

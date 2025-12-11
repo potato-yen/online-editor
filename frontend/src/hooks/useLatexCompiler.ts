@@ -8,7 +8,11 @@ const DEFAULT_BACKEND_URL = 'http://localhost:3001/compile-latex'
 function resolveBackendURL() {
   const envURL = import.meta.env.VITE_BACKEND_URL?.trim()
   if (envURL) {
-    return envURL
+    const normalized = envURL.replace(/\/$/, '')
+    if (normalized.endsWith('/compile-latex')) {
+      return normalized
+    }
+    return `${normalized}/compile-latex`
   }
   if (typeof window !== 'undefined') {
     const origin = new URL(window.location.origin)
@@ -115,7 +119,9 @@ export function useLatexCompiler({ text, mode }: UseLatexCompilerOptions) {
       }
       if (!data.success) {
         const errorLines = Array.isArray(data.errorLines)
-          ? data.errorLines.map((n: unknown) => Number(n)).filter((n) => Number.isFinite(n))
+          ? data.errorLines
+              .map((n: unknown) => Number(n))
+              .filter((n): n is number => Number.isFinite(n))
           : []
         setCompileErrorLines(errorLines)
         
