@@ -11,11 +11,14 @@ type Props = {
   saveStatus?: SaveStatus
   onCompileLatex: () => void
   onExportSource: () => void
-  onExportPDF: () => void
+  onExportPDF: () => void // 這個是用來處理 Markdown 轉 PDF 的
   onManualSave?: () => void
   onSetMode?: (m: Mode) => void
   toolbarUI?: ReactNode
   settingsMenu?: ReactNode
+  // [NEW] 新增 LaTeX PDF 下載所需的 props
+  pdfURL?: string
+  title?: string
 }
 
 export default function AppHeader({
@@ -28,6 +31,8 @@ export default function AppHeader({
   onManualSave,
   toolbarUI,
   settingsMenu,
+  pdfURL,
+  title,
 }: Props) {
   const navigate = useNavigate()
 
@@ -40,6 +45,17 @@ export default function AppHeader({
   else if (saveStatus === 'error') { saveText = 'Failed'; saveVariant = 'default'; }
 
   const modeLabel = mode === 'markdown' ? 'Markdown' : 'LaTeX'
+
+  // [NEW] 處理 LaTeX PDF 下載的函式
+  const handleDownloadLatexPdf = () => {
+    if (!pdfURL) return;
+    const link = document.createElement('a');
+    link.href = pdfURL;
+    link.download = `${title || 'document'}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 
   return (
     <header className="border-b border-border-base bg-surface-layer/80 backdrop-blur-md sticky top-0 z-40">
@@ -93,12 +109,21 @@ export default function AppHeader({
 
           <div className="h-4 w-px bg-border-base mx-1" />
 
+          {/* Export Source Button */}
           <Button variant="ghost" size="sm" onClick={onExportSource}>
             Export .{mode === 'markdown' ? 'md' : 'tex'}
           </Button>
 
+          {/* Export PDF Button (Markdown) */}
           {mode === 'markdown' && (
             <Button variant="ghost" size="sm" onClick={onExportPDF}>
+              Export PDF
+            </Button>
+          )}
+
+          {/* [NEW] Export PDF Button (LaTeX) - 只在有編譯好的 PDF 時顯示 */}
+          {mode === 'latex' && pdfURL && (
+            <Button variant="ghost" size="sm" onClick={handleDownloadLatexPdf}>
               Export PDF
             </Button>
           )}
@@ -109,10 +134,6 @@ export default function AppHeader({
 
       {/* Toolbar Area */}
       {toolbarUI && (
-        // (FIX 2) 關鍵修正：
-        // 1. flex-wrap: 允許按鈕換行
-        // 2. overflow-visible: 允許 Dropdown 彈出視窗超出此容器
-        // 3. min-h-[40px]: 確保高度足夠
         <div className="px-4 py-2 border-t border-border-subtle bg-surface-base/50 flex items-center gap-2 flex-wrap overflow-visible min-h-[40px]">
           {toolbarUI}
         </div>

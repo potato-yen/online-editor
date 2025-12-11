@@ -73,7 +73,6 @@ export function EditorCore({
   const defaultText = ''
   const [text, setText] = useState<string>(() => initialText ?? defaultText)
   
-  // [FIXED] 取得 autoCloseBrackets
   const { fontSize, wordWrap, indentSize, autoCloseBrackets } = useEditorSettings()
 
   const previewRef = useRef<HTMLDivElement | null>(null)
@@ -83,7 +82,6 @@ export function EditorCore({
   const { renderedHTML } = useMarkdownRenderer({ text, mode, previewRef })
   const { splitPos, containerRef, handleResizeStart } = useSplitPane()
   
-  // [FIXED] 傳遞 autoCloseBrackets
   const {
     handleSmartBlock,
     handleSmartInline,
@@ -94,8 +92,8 @@ export function EditorCore({
     editorRef, 
     onContentChange, 
     setText, 
-    indentSize,
-    autoCloseBrackets // 這裡傳入
+    indentSize, 
+    autoCloseBrackets 
   })
 
   const {
@@ -107,7 +105,8 @@ export function EditorCore({
   } = useEditorModals({ 
     editorRef, 
     handleSimpleInsert, 
-    handleMathInsert
+    handleMathInsert,
+    mode // [NEW] 傳入 mode，讓表格精靈知道要產生 LaTeX 還是 Markdown
   })
 
   const { handleEditorScroll, editorLineHeight } = useScrollSync({
@@ -158,8 +157,7 @@ export function EditorCore({
 
   const handleExportPDF = () => {
     if (mode === 'latex') {
-      alert("For LaTeX, please use 'Preview PDF' then download from the viewer.");
-      return;
+      return; // LaTeX PDF is handled by AppHeader download button
     }
     window.print();
   };
@@ -190,6 +188,7 @@ export function EditorCore({
       onRequestSubscript={onRequestSubscript}
       onRequestMatrix={onRequestMatrix}
       onRequestAligned={onRequestAligned}
+      onRequestTable={onRequestTable} // [NEW] 將 onRequestTable 傳給 LaTeX 工具列
     />
   );
 
@@ -203,7 +202,7 @@ export function EditorCore({
 
   return (
     <div className="flex h-screen flex-col bg-surface-base text-content-primary overflow-hidden">
-      {/* Modals (always rendered, hidden by state) */}
+      {/* Modals */}
       <div className="non-printable">
         <TableModal isOpen={isTableModalOpen} onClose={onCloseTable} onCreate={onCreateTable} />
         <SuperscriptModal isOpen={isSuperscriptModalOpen} onClose={onCloseSuperscript} onCreate={onCreateSuperscript} />
@@ -236,6 +235,8 @@ export function EditorCore({
           onManualSave={onManualSave}
           toolbarUI={ToolbarComponent}
           settingsMenu={settingsMenu}
+          pdfURL={pdfURL} // [NEW] 傳入 PDF URL 供下載
+          title={title}   // [NEW] 傳入標題供檔名使用
         />
       </div>
 
@@ -280,7 +281,7 @@ export function EditorCore({
   )
 }
 
-// --- Router Wrapper --- (No changes below)
+// --- Router Wrapper ---
 type AppRouterWrapperProps = {
   openAddFilePrompt: (docType: Mode) => Promise<string | null>
 }

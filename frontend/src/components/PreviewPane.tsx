@@ -72,10 +72,20 @@ export default function PreviewPane({
     } catch (err) { console.error(err) }
   }
 
+  // 處理 PDF URL，加入參數以隱藏工具列並自適應寬度
+  const getPdfViewerUrl = (url: string) => {
+    if (!url) return '';
+    // #toolbar=0: 隱藏工具列 (下載/列印等)
+    // #view=FitH: 讓 PDF 自動以「符合寬度」模式顯示
+    return `${url}#toolbar=0&view=FitH&navpanes=0`;
+  };
+
   return (
-    <div className="flex-1 flex flex-col bg-surface-layer overflow-hidden border-l border-border-base relative">
-       {/* 預覽區標籤 - 加入 z-index 確保浮在最上層，但不擋住滑鼠事件 */}
-       <div className="absolute top-2 right-4 z-20 pointer-events-none non-printable">
+    // 加入 'group' class，讓子元素可以用 group-hover
+    <div className="flex-1 flex flex-col bg-surface-layer overflow-hidden border-l border-border-base relative group">
+       {/* [MODIFIED] 預覽區標籤 - 設定 opacity-0 (隱藏) 與 group-hover:opacity-100 (顯示) */}
+       {/* 位置改回 top-4 right-4 (右上角) */}
+       <div className="absolute top-4 right-4 z-20 pointer-events-none non-printable opacity-0 group-hover:opacity-100 transition-opacity duration-300">
         <span className="text-[10px] font-bold text-content-muted/50 bg-surface-base/30 px-2 py-1 rounded uppercase tracking-widest backdrop-blur-sm">
           Preview
         </span>
@@ -88,7 +98,6 @@ export default function PreviewPane({
           dangerouslySetInnerHTML={{ __html: renderedHTML }}
         />
       ) : (
-        // (FIX 4) 移除 items-center justify-center，改用 flex-col 讓內容從上方開始
         <div className="flex-1 overflow-auto bg-surface-base relative">
           {errorLog ? (
             // Error Log Container
@@ -110,7 +119,7 @@ export default function PreviewPane({
             </div>
           ) : pdfURL ? (
             <iframe
-              src={pdfURL}
+              src={getPdfViewerUrl(pdfURL)}
               className="w-full h-full border-none"
               title="LaTeX PDF Preview"
             />
