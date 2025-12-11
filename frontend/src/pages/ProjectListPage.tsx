@@ -9,9 +9,9 @@ import AppLayout from '../layouts/AppLayout'
 import { Button } from '../components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
-import { Input } from '../components/ui/Input'
+import DeleteConfirmModal from '../components/DeleteConfirmModal' // [NEW] 引入刪除確認 Modal
 
-// Icons (省略部分 icon 定義以節省空間，保留使用的)
+// Icons
 const IconDots = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /></svg>
 )
@@ -44,7 +44,42 @@ type ProjectListPageProps = {
   openAddFilePrompt: (docType: DocType) => Promise<string | null>
 }
 
-// (NEW) 範本資料
+// 定義新手友善的預設 LaTeX 範本
+const DEFAULT_LATEX_CONTENT = `\\documentclass[12pt]{article}
+\\usepackage{geometry}
+\\geometry{a4paper, margin=1in}
+
+\\title{My First Document}
+\\author{Your Name}
+\\date{\\today}
+
+\\begin{document}
+
+\\maketitle
+
+\\section{Introduction}
+Welcome to your new LaTeX document! 
+Start typing your content here.
+
+\\section{Example}
+Here is a math equation:
+\\[
+  E = mc^2
+\\]
+
+\\end{document}
+`;
+
+// 定義預設 Markdown 範本
+const DEFAULT_MARKDOWN_CONTENT = `# New Document
+
+Start writing your markdown here...
+
+- Item 1
+- Item 2
+`;
+
+// 範本資料
 const TEMPLATES = [
   {
     title: 'Math Notes',
@@ -100,6 +135,10 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
   const [creating, setCreating] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   
+  // [NEW] 刪除相關狀態
+  const [deleteTarget, setDeleteTarget] = useState<DocumentRow | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const canCreateMore = docs.length < MAX_DOCS
 
@@ -141,7 +180,10 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
     if (!user || !canCreateMore) return
     const now = new Date().toISOString()
     const resolvedTitle = title?.trim() || (docType === 'markdown' ? 'New Markdown' : 'New LaTeX')
-    const resolvedContent = typeof content === 'string' ? content : (docType === 'markdown' ? '# Title\n' : '% LaTeX\n')
+    
+    const resolvedContent = typeof content === 'string' 
+      ? content 
+      : (docType === 'markdown' ? DEFAULT_MARKDOWN_CONTENT : DEFAULT_LATEX_CONTENT)
 
     setCreating(true)
     const { data, error } = await supabase.from('documents').insert({
@@ -166,7 +208,6 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
     if (name) await createDoc({ docType, title: name })
   }
 
-  // (NEW) 使用範本建立
   const handleUseTemplate = async (template: typeof TEMPLATES[0]) => {
     if (!canCreateMore) return;
     await createDoc({
@@ -203,12 +244,27 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
     setMenuOpenId(null)
   }
 
-  const deleteDoc = async (doc: DocumentRow) => {
-    if (!window.confirm(`Delete "${doc.title}"?`)) return
-    const { error } = await supabase.from('documents').delete().eq('id', doc.id)
-    if (error) alert(error.message)
-    else setDocs(prev => prev.filter(d => d.id !== doc.id))
-    setMenuOpenId(null)
+  // [MODIFIED] 開啟刪除確認 Modal
+  const requestDeleteDoc = (doc: DocumentRow) => {
+    setDeleteTarget(doc);
+    setMenuOpenId(null); // 關閉下拉選單
+  }
+
+  // [MODIFIED] 實際執行刪除 (傳給 Modal 的 callback)
+  const confirmDeleteDoc = async () => {
+    if (!deleteTarget) return;
+    
+    setIsDeleting(true);
+    const { error } = await supabase.from('documents').delete().eq('id', deleteTarget.id);
+    
+    if (error) {
+      alert(error.message);
+    } else {
+      setDocs(prev => prev.filter(d => d.id !== deleteTarget.id));
+    }
+    
+    setIsDeleting(false);
+    setDeleteTarget(null); // 關閉 Modal
   }
 
   const handleLogout = async () => {
@@ -322,7 +378,8 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
                             Rename
                           </button>
                           <button 
-                            onClick={(e) => { e.stopPropagation(); deleteDoc(doc); }}
+                            // [MODIFIED] 改為呼叫 requestDeleteDoc
+                            onClick={(e) => { e.stopPropagation(); requestDeleteDoc(doc); }}
                             className="w-full text-left px-3 py-2 text-xs hover:bg-status-error/10 text-status-error"
                           >
                             Delete
@@ -354,6 +411,15 @@ export default function ProjectListPage({ openAddFilePrompt }: ProjectListPagePr
             ))}
           </div>
         )}
+
+        {/* [NEW] 刪除確認視窗 */}
+        <DeleteConfirmModal
+          isOpen={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={confirmDeleteDoc}
+          itemName={deleteTarget?.title}
+          isDeleting={isDeleting}
+        />
       </div>
     </AppLayout>
   )

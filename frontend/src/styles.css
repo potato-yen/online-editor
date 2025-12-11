@@ -30,6 +30,7 @@
   }
 }
 
+/* [MODIFIED] 移除全域 pre 強制樣式，避免破壞編輯器對齊 */
 textarea, pre, code {
   font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace !important;
   font-variant-ligatures: none;
@@ -58,14 +59,12 @@ textarea, pre, code {
 
 /* [全域預覽區修正] - 針對一般模式下的預覽 */
 .prose {
-  /* 強制所有內容換行，避免撐開容器 */
   overflow-wrap: anywhere !important; 
   word-break: break-word !important; 
   word-wrap: break-word !important;
-  max-width: 100%; /* 確保不超過父容器 */
+  max-width: 100%; 
 }
 
-/* 強制預覽區的程式碼區塊自動換行 */
 .prose pre {
   white-space: pre-wrap !important;       
   word-break: break-all !important;      
@@ -74,24 +73,20 @@ textarea, pre, code {
   max-width: 100%;
 }
 
-/* [KEY FIX] 確保 pre 內部的 code 也能換行 */
 .prose pre code {
   white-space: pre-wrap !important;
   word-break: break-all !important;
   overflow-wrap: anywhere !important;
-  display: block; /* 讓 code 佔滿 pre 的寬度 */
+  display: block; 
   width: 100%;
 }
 
-/* 確保行內代碼也能換行 */
 .prose :not(pre) > code {
   word-break: break-all !important;
   overflow-wrap: anywhere !important;
-  white-space: pre-wrap !important; /* 行內代碼也允許換行 */
+  white-space: pre-wrap !important; 
 }
 
-/* [NEW] KaTeX 數學公式全域強制換行設定 (螢幕預覽 + 列印) */
-/* 這原本只在 @media print，現在移出來讓預覽區也能看到換行效果 */
 .katex-display {
   overflow: visible !important;
   width: 100% !important;
@@ -107,17 +102,17 @@ textarea, pre, code {
 .katex .mord,
 .katex .mbin,
 .katex .mrel {
-  white-space: normal !important;       /* 允許換行 */
-  overflow-wrap: anywhere !important;   /* 在任何地方斷行，包含長單字 */
-  word-break: break-all !important;     /* 針對無空白連續字串強制斷行 */
+  white-space: normal !important;       
+  overflow-wrap: anywhere !important;   
+  word-break: break-all !important;     
   text-indent: 0 !important;
-  max-width: 100% !important;           /* 限制最大寬度 */
+  max-width: 100% !important;           
 }
 
 .katex .base {
   margin-top: 5px !important;
   margin-bottom: 5px !important;
-  display: inline !important; /* 讓內容像文字一樣流動 */
+  display: inline !important; 
   width: auto !important;
 }
 
@@ -238,7 +233,6 @@ textarea, pre, code {
     background-color: #ffffff !important;
     page-break-inside: auto !important;
 
-    /* 全域文字強制換行 */
     overflow-wrap: anywhere !important; 
     word-break: break-all !important;
     white-space: normal !important;
@@ -283,8 +277,8 @@ textarea, pre, code {
     print-color-adjust: exact !important;
 
     white-space: pre-wrap !important;
-    word-break: break-all !important; /* 修正：使用 break-all */
-    overflow-wrap: anywhere !important; /* 修正：使用 anywhere */
+    word-break: break-all !important; 
+    overflow-wrap: anywhere !important; 
     overflow: visible !important;
   }
 

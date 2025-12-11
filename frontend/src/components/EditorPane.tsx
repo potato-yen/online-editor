@@ -14,16 +14,12 @@ interface EditorPaneProps {
 }
 
 // [HELPER] 尋找配對括號的函式
-// 支援 (, [, { 
-// 邏輯：檢查游標左右兩側，優先權：右側字元 > 左側字元
 const findMatchingBracket = (text: string, cursorPos: number): [number, number] | null => {
   const pairs: Record<string, string> = { '(': ')', '[': ']', '{': '}' };
   const revPairs: Record<string, string> = { ')': '(', ']': '[', '}': '{' };
   
-  // 檢查索引是否有效
   const isValid = (i: number) => i >= 0 && i < text.length;
 
-  // 核心搜尋邏輯
   const scan = (start: number, open: string, close: string, step: 1 | -1): number | null => {
     let depth = 1;
     let i = start + step;
@@ -40,21 +36,17 @@ const findMatchingBracket = (text: string, cursorPos: number): [number, number] 
     return null;
   };
 
-  // 1. 優先檢查游標「右側」的字元 (游標在括號前)
-  // 例如: |( ... )
   let targetIndex = cursorPos;
   let char = text[targetIndex];
   
-  if (pairs[char]) { // 是左括號 ( -> 往右找 )
+  if (pairs[char]) { 
     const match = scan(targetIndex, char, pairs[char], 1);
     if (match !== null) return [targetIndex, match];
-  } else if (revPairs[char]) { // 是右括號 ) -> 往左找 (
+  } else if (revPairs[char]) { 
     const match = scan(targetIndex, char, revPairs[char], -1);
     if (match !== null) return [match, targetIndex];
   }
 
-  // 2. 次要檢查游標「左側」的字元 (游標在括號後)
-  // 例如: ( ... )|
   targetIndex = cursorPos - 1;
   if (isValid(targetIndex)) {
     char = text[targetIndex];
@@ -84,18 +76,16 @@ const generateRainbowText = (text: string, highlightIndices: Set<number>) => {
   
   let mathDepth = 0;
   
-  // [MODIFIED] 優化配色順序：冷暖交替，確保相鄰層級差異最大化
   const colors = [
-    'text-yellow-400', // L0: Bright Yellow
-    'text-pink-400',   // L1: Pink (High contrast to Yellow)
-    'text-cyan-400',   // L2: Cyan (High contrast to Pink)
-    'text-green-400',  // L3: Green
-    'text-orange-400', // L4: Orange
-    'text-purple-400', // L5: Purple
-    'text-blue-400',   // L6: Blue
+    'text-yellow-400',
+    'text-pink-400',
+    'text-cyan-400',
+    'text-green-400',
+    'text-orange-400',
+    'text-purple-400',
+    'text-blue-400',
   ];
 
-  // 匹配括號的高亮樣式：半透明白底 + 輕微外框
   const highlightClass = "bg-white/20 outline outline-1 outline-white/30 rounded-[1px]";
 
   const flush = (key: string | number) => {
@@ -109,7 +99,6 @@ const generateRainbowText = (text: string, highlightIndices: Set<number>) => {
     const char = text[i];
     const nextChar = text[i + 1] || '';
     
-    // 檢查是否需要高亮此字元
     const isHighlighted = highlightIndices.has(i);
     const extraClass = isHighlighted ? highlightClass : '';
 
@@ -193,10 +182,6 @@ const generateRainbowText = (text: string, highlightIndices: Set<number>) => {
                     {char}
                 </span>
             );
-            // 只有大括號增加深度，或者你希望所有括號都變色？
-            // 原本邏輯只有 {} 變色，這裡為了配合「括號匹配」功能，
-            // 建議讓 (), [] 也參與變色邏輯，或者保持原樣但支援高亮。
-            // 為了視覺一致性，這裡假設所有括號都參與變色。
             if (char === '{') mathDepth++; 
             i++;
             continue;
@@ -214,8 +199,6 @@ const generateRainbowText = (text: string, highlightIndices: Set<number>) => {
         }
     }
 
-    // 處理非數學區塊的括號高亮 (如果需要的話)
-    // 這裡簡單處理：如果有被選中，就獨立渲染出來
     if (isHighlighted) {
         flush(i);
         result.push(
@@ -251,11 +234,9 @@ export default function EditorPane({
   const [lineHeights, setLineHeights] = useState<number[]>([]);
   const [editorWidth, setEditorWidth] = useState<number | undefined>(undefined);
   
-  // [NEW] 游標位置與高亮索引
   const [cursorPos, setCursorPos] = useState<number | null>(null);
   const [highlightIndices, setHighlightIndices] = useState<Set<number>>(new Set());
 
-  // 監聽游標移動，計算匹配括號
   useEffect(() => {
     if (cursorPos === null) {
       setHighlightIndices(new Set());
@@ -269,13 +250,11 @@ export default function EditorPane({
     }
   }, [cursorPos, text]);
 
-  // 更新 generateRainbowText 呼叫，傳入 highlightIndices
   const rainbowContent = useMemo(
     () => generateRainbowText(text, highlightIndices), 
     [text, highlightIndices]
   );
 
-  // [HELPER] 統一更新游標位置的函式
   const updateCursor = () => {
     if (editorRef.current) {
       setCursorPos(editorRef.current.selectionStart);
@@ -326,6 +305,7 @@ export default function EditorPane({
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
+        // clientWidth 會扣除卷軸寬度
         setEditorWidth(entry.target.clientWidth);
       }
     });
@@ -397,11 +377,16 @@ export default function EditorPane({
             </div>
           )}
 
+          {/* [FIX] 更新: 移除 w-full，改用 style.width 同步 textarea 的實際寬度 */}
           <pre
             ref={preRef}
             aria-hidden="true"
-            className="absolute inset-0 m-0 w-full h-full bg-transparent pointer-events-none scrollbar-none overflow-hidden"
-            style={commonStyles}
+            className="absolute inset-0 m-0 h-full bg-transparent pointer-events-none scrollbar-none overflow-hidden"
+            style={{
+              ...commonStyles,
+              // 強制同步寬度：避免 textarea 有卷軸時，pre 沒扣除卷軸寬度導致換行點不同步
+              width: editorWidth ? `${editorWidth}px` : '100%',
+            }}
           >
             {rainbowContent}
             <br /> 
@@ -412,9 +397,8 @@ export default function EditorPane({
             onScroll={handleScroll} 
             onKeyDown={(e) => {
                 onKeyDown(e);
-                updateCursor(); // 鍵盤移動也更新游標
+                updateCursor(); 
             }}
-            // [NEW] 加入事件監聽以更新游標位置
             onSelect={updateCursor}
             onClick={updateCursor}
             onKeyUp={updateCursor}
@@ -427,7 +411,6 @@ export default function EditorPane({
             value={text}
             onChange={(e) => {
                 onTextChange(e.target.value);
-                // 文字變更後，游標位置更新可能會有微小延遲，這裡可以不強制更新，依賴 onSelect 即可
             }}
             spellCheck={false}
             autoCapitalize="off"
@@ -441,6 +424,7 @@ export default function EditorPane({
             aria-hidden="true"
             style={{
               ...commonStyles,
+              // MirrorRef 本來就已經正確處理了寬度，所以行號是對的
               width: editorWidth ? `${editorWidth}px` : '100%',
               position: 'absolute',
               top: 0,

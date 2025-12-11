@@ -6,11 +6,9 @@ type UseEditorActionsOptions = {
   onContentChange?: (text: string) => void
   setText: React.Dispatch<React.SetStateAction<string>>
   indentSize?: number
-  // [NEW]
   autoCloseBrackets?: boolean
 }
 
-// 定義選取範圍的調整參數 (相對於插入內容的起始位置)
 export type SelectionOptions = {
   relativeStart: number;
   relativeLength: number;
@@ -21,7 +19,7 @@ type SimpleInsertHandler = (
   templateEnd: string,
   placeholder: string,
   selectionOptions?: SelectionOptions,
-  requiredPackage?: string // [NEW] 支援自動引入套件
+  requiredPackage?: string
 ) => void
 
 type SmartBlockType = 'heading' | 'list' | 'quote' | 'task'
@@ -52,18 +50,13 @@ function isCursorInMath(text: string, pos: number): boolean {
   return inBlockMath || inInlineMath;
 }
 
-// [NEW] 檢查並插入 Package 的輔助函式
-// 回傳: { newText: string, offset: number } 如果有修改，否則回傳 null
+// 檢查並插入 Package 的輔助函式
 function injectPackage(text: string, pkg: string): { newText: string; offset: number } | null {
-  // 1. 檢查是否已經引入 (簡單 Regex 檢查)
-  // 支援 \usepackage{pkg}, \usepackage[opt]{pkg}, \usepackage{pkg, other}
-  // 這裡使用較寬鬆的檢查，只要大括號內包含該單字即可
   const pkgRegex = new RegExp(`\\\\usepackage(?:\\[[^\\]]*\\])?\\{[^\\}]*\\b${pkg}\\b[^\\}]*\\}`);
   if (pkgRegex.test(text)) {
-    return null; // 已經存在
+    return null; 
   }
 
-  // 2. 尋找插入點：優先找 \begin{document} 之前
   const docStartRegex = /\\begin\{document\}/;
   const matchDoc = docStartRegex.exec(text);
   
@@ -74,7 +67,6 @@ function injectPackage(text: string, pkg: string): { newText: string; offset: nu
     return { newText, offset: insertion.length };
   }
   
-  // 3. 備案：找 \documentclass 之後
   const classRegex = /(\\documentclass\[.*?\]\{.*?\})|(\\documentclass\{.*?\})/;
   const matchClass = classRegex.exec(text);
   if (matchClass) {
@@ -84,7 +76,6 @@ function injectPackage(text: string, pkg: string): { newText: string; offset: nu
      return { newText, offset: insertion.length };
   }
 
-  // 找不到合適位置 (例如只是片段文字)，不動作
   return null; 
 }
 
@@ -144,7 +135,9 @@ export function useEditorActions({
       editor.focus()
       editor.setSelectionRange(lineStart, lineEnd)
       document.execCommand('insertText', false, replacement)
-      setTimeout(() => {
+      
+      // [FIX] 使用 requestAnimationFrame 確保游標更新
+      requestAnimationFrame(() => {
         editor.focus()
         const finalSelStart = isToggleOff ? lineStart : lineStart + newPrefix.length
         const finalSelEnd = lineStart + replacement.length
@@ -163,7 +156,7 @@ export function useEditorActions({
         } else {
           editor.setSelectionRange(finalSelStart, finalSelEnd)
         }
-      }, 0)
+      })
     },
     [editorRef, getCurrentLineInfo]
   )
@@ -194,10 +187,11 @@ export function useEditorActions({
       }
       editor.focus()
       document.execCommand('insertText', false, replacement)
-      setTimeout(() => {
+      // [FIX] 使用 requestAnimationFrame
+      requestAnimationFrame(() => {
         editor.focus()
         editor.setSelectionRange(finalSelStart, finalSelEnd)
-      }, 0)
+      })
     },
     [editorRef]
   )
@@ -207,16 +201,14 @@ export function useEditorActions({
       const editor = editorRef.current
       if (!editor) return
       
-      // [NEW] 1. 處理 Package 自動引入
+      // 1. 處理 Package 自動引入 (直接修改狀態，不走 execCommand，因為涉及全文修改)
       let offset = 0;
       if (requiredPackage) {
         const result = injectPackage(editor.value, requiredPackage);
         if (result) {
           const { newText, offset: insertedLen } = result;
-          
           offset = insertedLen;
           
-          // 如果有插入 package，改用直接替換內容的方式
           const { selectionStart, selectionEnd } = editor;
           const adjustedStart = selectionStart + offset;
           const adjustedEnd = selectionEnd + offset;
@@ -240,7 +232,6 @@ export function useEditorActions({
           setText(finalText);
           onContentChange?.(finalText);
           
-          // 計算新的選取範圍
           let newCursorStart: number;
           let newCursorEnd: number;
           
@@ -254,16 +245,17 @@ export function useEditorActions({
              newCursorEnd = isSymbolReplacement ? newCursorStart : newCursorStart + placeholder.length;
           }
           
-          setTimeout(() => {
+          requestAnimationFrame(() => {
             editor.focus();
+            editor.value = finalText; // 確保 DOM 同步
             editor.setSelectionRange(newCursorStart, newCursorEnd);
-          }, 0);
+          });
           
           return;
         }
       }
 
-      // 如果不需要引入 package，或已經存在，走原本的路徑 (保留 Undo)
+      // 2. 一般插入 (嘗試使用 execCommand 保留 Undo)
       const { selectionStart, selectionEnd, value } = editor
       const selectedText = value.substring(selectionStart, selectionEnd)
       
@@ -291,8 +283,10 @@ export function useEditorActions({
           newCursorStart = selectionStart + selectionOptions.relativeStart;
           newCursorEnd = newCursorStart + selectionOptions.relativeLength;
         } else if (selectedText && !isSymbolReplacement) {
+           // 包覆後，游標停在最後
            newCursorStart = newCursorEnd = selectionStart + textToInsert.length
         } else {
+           // 插入 placeholder，反白 placeholder
            newCursorStart = selectionStart + templateStart.length
            newCursorEnd = isSymbolReplacement ? newCursorStart : newCursorStart + placeholder.length
         }
@@ -302,21 +296,21 @@ export function useEditorActions({
       const isSuccess = document.execCommand('insertText', false, textToInsert)
       
       if (isSuccess) {
-         setTimeout(() => {
+         // [FIX] 改用 requestAnimationFrame 確保在 React Render 後執行
+         requestAnimationFrame(() => {
             updateCursor(); 
-         }, 0);
+         });
       } else {
-        console.warn(
-          'execCommand failed, falling back to state update (Undo not supported for this action).'
-        )
+        // Fallback
         const newText =
           value.substring(0, selectionStart) + textToInsert + value.substring(selectionEnd)
         setText(newText)
         onContentChange?.(newText)
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           editor.focus()
+          editor.value = newText;
           updateCursor()
-        }, 0)
+        })
       }
     },
     [editorRef, onContentChange, setText]
@@ -385,7 +379,7 @@ export function useEditorActions({
       const lines = selectedText.split('\n')
       const indentChars = indentCharacters
       let newLines: string[] = []
-      let indentChange = 0 // 總字元數變化量
+      let indentChange = 0
       
       if (action === 'indent') {
         newLines = lines.map((line) => {
@@ -412,7 +406,7 @@ export function useEditorActions({
       editor.setSelectionRange(startLineIndex, endLineIndex)
       document.execCommand('insertText', false, newTextToInsert)
       
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         editor.focus()
         const isSingleCursor = selectionStart === selectionEnd;
 
@@ -423,7 +417,7 @@ export function useEditorActions({
             const newLength = newTextToInsert.length
             editor.setSelectionRange(startLineIndex, startLineIndex + newLength)
         }
-      }, 0)
+      })
     },
     [editorRef, indentCharacters]
   )
@@ -433,7 +427,6 @@ export function useEditorActions({
       const editor = editorRef.current;
       if (!editor) return;
 
-      // 1. 快捷鍵
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
         const key = e.key.toLowerCase();
         if (key === 'b') {
@@ -452,7 +445,6 @@ export function useEditorActions({
         }
       }
 
-      // 2. Tab 鍵
       if (e.key === 'Tab') {
         e.preventDefault();
         const { selectionStart, selectionEnd } = editor;
@@ -470,7 +462,6 @@ export function useEditorActions({
         return;
       }
 
-      // 3. Enter 鍵
       if (e.key === 'Enter') {
         const { currentLine } = getCurrentLineInfo(editor);
         const match = currentLine.match(/^(\s*)([-*+]|\d+\.)\s+(\[[ x]\]\s)?/);
@@ -505,7 +496,6 @@ export function useEditorActions({
         }
       }
 
-      // 4. 自動配對括號與引號
       const pairs: Record<string, string> = {
         '(': ')',
         '[': ']',
@@ -515,7 +505,6 @@ export function useEditorActions({
         '`': '`',
       };
 
-      // 只有在 autoCloseBrackets 為 true 時才執行
       if (autoCloseBrackets && Object.keys(pairs).includes(e.key)) {
         e.preventDefault();
         const open = e.key;
@@ -532,7 +521,6 @@ export function useEditorActions({
         return;
       }
       
-      // 5. Backspace 智慧刪除
       if (autoCloseBrackets && e.key === 'Backspace') {
          const { selectionStart, selectionEnd, value } = editor;
          if (selectionStart === selectionEnd && selectionStart > 0) {
@@ -559,6 +547,3 @@ export function useEditorActions({
     handleTabKey: handleKeyDown,
   }
 }
-
-export type EditorActions = ReturnType<typeof useEditorActions>
-export type SimpleInsert = SimpleInsertHandler

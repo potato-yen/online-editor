@@ -24,6 +24,7 @@ type LatexToolbarProps = {
   onRequestSubscript: ToolbarProps['onRequestSubscript'];
   onRequestMatrix: ToolbarProps['onRequestMatrix'];
   onRequestAligned: ToolbarProps['onRequestAligned'];
+  onRequestTable: ToolbarProps['onRequestTable'];
 }
 
 export default function LatexToolbar({ 
@@ -32,7 +33,8 @@ export default function LatexToolbar({
   onRequestSuperscript,
   onRequestSubscript,
   onRequestMatrix,
-  onRequestAligned
+  onRequestAligned,
+  onRequestTable
 }: LatexToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -41,7 +43,6 @@ export default function LatexToolbar({
       <div className="flex items-center gap-0.5 mr-2 border-r border-border-subtle pr-2">
         <ToolbarBtn 
           label="Fraction" 
-          // 這裡加入 'amsmath' 作為範例，雖然基本 LaTeX 支援 \frac，但複雜數學通常需要 amsmath
           onClick={() => onMathInsert('\\frac{', '}{}', 'a', undefined, 'amsmath')} 
           icon={<span className="font-serif text-sm">½</span>} 
         />
@@ -57,6 +58,7 @@ export default function LatexToolbar({
         />
         <ToolbarBtn 
           label="Square Root" 
+          // [MODIFIED] 改為插入 \sqrt{x} 並反白 x
           onClick={() => onMathInsert('\\sqrt{', '}', 'x')} 
           icon={<span className="font-serif text-sm">√</span>} 
         />
@@ -83,10 +85,13 @@ export default function LatexToolbar({
       {/* --- 第三區：完整分類 (Dropdowns) --- */}
       
       <Dropdown label="Structure">
-        <DropdownItem onClick={() => onSimpleInsert('$', '$', 'E=mc^2')}>Inline Math $</DropdownItem>
-        <DropdownItem onClick={() => onSimpleInsert('$$\n', '\n$$', 'E=mc^2')}>Block Math $$</DropdownItem>
-        <DropdownItem onClick={() => onMathInsert('\\sqrt[', ']{x}', 'n')}>Nth Root</DropdownItem>
-        <DropdownItem onClick={() => onMathInsert('\\text{', '}', 'text', undefined, 'amsmath')}>Text Mode</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('\\section{', '}', 'Title')}>Section</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('\\subsection{', '}', 'Subtitle')}>Subsection</DropdownItem>
+        <div className="my-1 border-t border-border-base" />
+        <DropdownItem onClick={() => onSimpleInsert('\\begin{itemize}\n  \\item ', '\n\\end{itemize}', 'Item 1')}>Bulleted List</DropdownItem>
+        <DropdownItem onClick={() => onSimpleInsert('\\begin{enumerate}\n  \\item ', '\n\\end{enumerate}', 'Item 1')}>Numbered List</DropdownItem>
+        <div className="my-1 border-t border-border-base" />
+        <DropdownItem onClick={onRequestTable}>Table Wizard</DropdownItem>
       </Dropdown>
 
       <Dropdown label="Greek & Symbols">
@@ -125,10 +130,11 @@ export default function LatexToolbar({
         <DropdownItem onClick={() => onMathInsert('\\int_{', '}^{b}{f(x)dx}', 'a')}>Integral (∫)</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\lim_{x \\to ', '}{f(x)}', '0')}>Limit (lim)</DropdownItem>
         <div className="my-1 border-t border-border-base" />
-        <DropdownItem onClick={() => onMathInsert('\\sin', '', '')}>Sin</DropdownItem>
-        <DropdownItem onClick={() => onMathInsert('\\cos', '', '')}>Cos</DropdownItem>
-        <DropdownItem onClick={() => onMathInsert('\\log', '', '')}>Log</DropdownItem>
-        <DropdownItem onClick={() => onMathInsert('\\ln', '', '')}>Ln</DropdownItem>
+        {/* [MODIFIED] Sin/Cos 加上大括號與預設參數 */}
+        <DropdownItem onClick={() => onMathInsert('\\sin{', '}', 'x')}>Sin</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\cos{', '}', 'x')}>Cos</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\log{', '}', 'x')}>Log</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\ln{', '}', 'x')}>Ln</DropdownItem>
       </Dropdown>
     </div>
   )

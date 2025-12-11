@@ -5,7 +5,8 @@ import { Button } from './ui/Button';
 interface TableModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (tableData: string[][]) => void; 
+  // [MODIFIED] 修改 onCreate 簽章，加入 options 參數來傳遞設定
+  onCreate: (tableData: string[][], options?: { hasRowHeaders: boolean }) => void; 
 }
 
 export default function TableModal({ isOpen, onClose, onCreate }: TableModalProps) {
@@ -19,7 +20,6 @@ export default function TableModal({ isOpen, onClose, onCreate }: TableModalProp
   const colsInputRef = useRef<HTMLInputElement>(null);
   const submitButtonRef = useRef<HTMLButtonElement>(null);
   
-  // 計算實際顯示的欄數：如果有左側標頭，欄數 + 1
   const effectiveCols = showRowHeaders ? cols + 1 : cols;
 
   useEffect(() => {
@@ -39,13 +39,10 @@ export default function TableModal({ isOpen, onClose, onCreate }: TableModalProp
       const newTable: string[][] = [];
       const headerRow: string[] = [];
       
-      // 使用 effectiveCols 來決定迴圈次數
       for (let c = 0; c < effectiveCols; c++) {
         if (showRowHeaders && c === 0) {
-          headerRow.push(''); // 左上角通常留空或特定文字
+          headerRow.push(''); 
         } else {
-          // 如果有左側標頭，第 1 欄 (index 1) 才是 Header 1
-          // 如果沒有，第 0 欄 (index 0) 就是 Header 1
           const headerIndex = showRowHeaders ? c : c + 1;
           headerRow.push(`Header ${headerIndex}`);
         }
@@ -86,13 +83,9 @@ export default function TableModal({ isOpen, onClose, onCreate }: TableModalProp
     } else if (r === -1 && c === 0) { 
       nextElement = document.getElementById('table-cell-0-0');
     } else {
-      // 檢查是否為該列最後一欄，使用 effectiveCols
       if (c < effectiveCols - 1) {
         nextElement = document.getElementById(`table-cell-${r}-${c + 1}`);
       } else if (r < rows) { 
-        // 跳到下一列的第一格
-        // tableData 的索引 r 從 0 到 rows (共 rows + 1 列，含標頭)
-        // 這裡的 r 是陣列索引，所以檢查 r < rows 表示還有下一列
         nextElement = document.getElementById(`table-cell-${r + 1}-0`);
       } else {
         nextElement = submitButtonRef.current;
@@ -109,21 +102,9 @@ export default function TableModal({ isOpen, onClose, onCreate }: TableModalProp
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    let finalData = tableData;
-    
-    if (showRowHeaders) {
-      finalData = tableData.map((row, r) => {
-        if (r === 0) return row;
-        
-        const newRow = [...row];
-        if (newRow[0]) {
-            newRow[0] = `**${newRow[0]}**`;
-        }
-        return newRow;
-      });
-    }
-
-    onCreate(finalData);
+    // [MODIFIED] 不要在這裡修改資料 (移除 Markdown 的 ** 語法)，直接將原始資料與設定傳出去
+    // 讓 useEditorModals 根據模式 (LaTeX/MD) 決定如何渲染
+    onCreate(tableData, { hasRowHeaders: showRowHeaders });
     onClose();
   };
 
@@ -190,7 +171,6 @@ export default function TableModal({ isOpen, onClose, onCreate }: TableModalProp
           <div className="flex-1 overflow-auto pr-2 scrollbar-thin scrollbar-track-neutral-900 scrollbar-thumb-neutral-600">
             <div 
               className="grid gap-2" 
-              // 更新 CSS Grid 欄位設定，使用 effectiveCols
               style={{ gridTemplateColumns: `repeat(${effectiveCols}, minmax(0, 1fr))` }} 
             >
               {tableData.map((row, r) => (
