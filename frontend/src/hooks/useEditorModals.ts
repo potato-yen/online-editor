@@ -5,7 +5,7 @@ import type { Mode } from '../types'
 type UseEditorModalsProps = {
   editorRef: React.RefObject<HTMLTextAreaElement>
   handleSimpleInsert: (templateStart: string, templateEnd: string, placeholder: string) => void
-  handleMathInsert: (templateStart: string, templateEnd: string, placeholder: string, selectionOptions?: { selectTemplate?: boolean }, requiredPackage?: string) => void
+  handleMathInsert: (templateStart: string, templateEnd: string, placeholder: string, selectionOptions?: { selectTemplate?: boolean; relativeStart: number; relativeLength: number }, requiredPackage?: string) => void
   mode: Mode
 }
 
@@ -38,12 +38,58 @@ export function useEditorModals({
   const onCloseLink = useCallback(() => setIsLinkModalOpen(false), [])
   const onCloseImage = useCallback(() => setIsImageModalOpen(false), [])
 
-  // --- Request Handlers (Open Modals) ---
+  // --- Request Handlers (Open Modals or Smart Insert) ---
   const onRequestTable = useCallback(() => setIsTableModalOpen(true), [])
-  const onRequestSuperscript = useCallback(() => setIsSuperscriptModalOpen(true), [])
-  const onRequestSubscript = useCallback(() => setIsSubscriptModalOpen(true), [])
   const onRequestMatrix = useCallback(() => setIsMatrixModalOpen(true), [])
   const onRequestAligned = useCallback(() => setIsAlignedModalOpen(true), [])
+
+  // [FIXED] 恢復智慧上標：如果有選取文字，直接變成底數；否則開彈窗
+  const onRequestSuperscript = useCallback(() => {
+    const editor = editorRef.current
+    if (editor) {
+      const { selectionStart, selectionEnd, value } = editor
+      // 如果有選取文字 (例如選了 "x")
+      if (selectionStart !== selectionEnd) {
+        const base = value.substring(selectionStart, selectionEnd)
+        const placeholder = '2' // 預設指數
+        
+        // 生成: base^{2}
+        const templateStart = `${base}^{`
+        const templateEnd = `}`
+        
+        handleMathInsert(templateStart, templateEnd, placeholder, {
+          relativeStart: templateStart.length, // 游標跳到底數和大括號後面
+          relativeLength: placeholder.length   // 反白預設指數
+        })
+        return
+      }
+    }
+    // 沒選字才開彈窗
+    setIsSuperscriptModalOpen(true)
+  }, [editorRef, handleMathInsert])
+
+  // [FIXED] 恢復智慧下標：同上
+  const onRequestSubscript = useCallback(() => {
+    const editor = editorRef.current
+    if (editor) {
+      const { selectionStart, selectionEnd, value } = editor
+      if (selectionStart !== selectionEnd) {
+        const base = value.substring(selectionStart, selectionEnd)
+        const placeholder = 'i' // 預設下標
+        
+        // 生成: base_{i}
+        const templateStart = `${base}_{`
+        const templateEnd = `}`
+        
+        handleMathInsert(templateStart, templateEnd, placeholder, {
+          relativeStart: templateStart.length,
+          relativeLength: placeholder.length
+        })
+        return
+      }
+    }
+    setIsSubscriptModalOpen(true)
+  }, [editorRef, handleMathInsert])
 
   const onRequestLink = useCallback(() => {
     const editor = editorRef.current
@@ -78,19 +124,15 @@ export function useEditorModals({
 
       if (mode === 'latex') {
         // --- LaTeX Mode ---
-        
-        // 1. 定義欄位對齊
         const colTypes = Array(cols).fill('c');
         if (hasRowHeaders) colTypes[0] = 'l';
         const colDef = '|' + colTypes.join('|') + '|';
         
         let latex = `\\begin{table}[h]\n  \\centering\n  \\begin{tabular}{${colDef}}\n    \\hline\n`;
         
-        // 2. 填充內容
         tableData.forEach((row, rowIndex) => {
           const formattedRow = row.map((cell, colIndex) => {
             let content = cell;
-            // 標頭加粗邏輯
             const isHeader = rowIndex === 0 || (hasRowHeaders && colIndex === 0);
             
             if (isHeader && content.trim() !== '') {
@@ -136,34 +178,19 @@ export function useEditorModals({
     [handleSimpleInsert, mode]
   )
 
-  // 2. Superscript [FIXED]
-  // 現在接收兩個參數：base (底數) 和 exponent (指數)
+  // 2. Superscript (Modal Callback)
   const handleCreateSuperscript = useCallback((base: string, exponent: string) => {
-    if (mode === 'latex') {
-      // 組合完整 LaTeX 字串，如 x^{2}
-      // 使用 handleMathInsert 確保它被自動包在 $...$ (若不在數學模式)
-      const content = `${base}^{${exponent}}`;
-      handleMathInsert(content, '', ''); 
-    } else {
-      // Markdown
-      const content = `${base}<sup>${exponent}</sup>`;
-      handleSimpleInsert(content, '', '');
-    }
+    const content = `${base}^{${exponent}}`;
+    handleMathInsert(content, '', ''); 
     setIsSuperscriptModalOpen(false)
-  }, [handleMathInsert, handleSimpleInsert, mode])
+  }, [handleMathInsert])
 
-  // 3. Subscript [FIXED]
-  // 現在接收兩個參數：base (底數) 和 index (下標)
+  // 3. Subscript (Modal Callback)
   const handleCreateSubscript = useCallback((base: string, index: string) => {
-    if (mode === 'latex') {
-      const content = `${base}_{${index}}`;
-      handleMathInsert(content, '', '');
-    } else {
-      const content = `${base}<sub>${index}</sub>`;
-      handleSimpleInsert(content, '', '');
-    }
+    const content = `${base}_{${index}}`;
+    handleMathInsert(content, '', '');
     setIsSubscriptModalOpen(false)
-  }, [handleMathInsert, handleSimpleInsert, mode])
+  }, [handleMathInsert])
 
   // 4. Matrix
   const handleCreateMatrix = useCallback((matrixData: string[][]) => {
@@ -195,7 +222,6 @@ export function useEditorModals({
   // 6. Link
   const handleCreateLink = useCallback((text: string, url: string) => {
     if (mode === 'latex') {
-      // Simple \href or \url fallback
       handleSimpleInsert(`\\href{${url}}{`, '}', text)
     } else {
       handleSimpleInsert('[', `](${url})`, text)
@@ -206,7 +232,6 @@ export function useEditorModals({
   // 7. Image
   const handleCreateImage = useCallback((alt: string, url: string) => {
     if (mode === 'latex') {
-      // Standard LaTeX figure
       const latex = `\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{${url}}\n  \\caption{${alt}}\n\\end{figure}`
       handleSimpleInsert(latex, '', '')
     } else {

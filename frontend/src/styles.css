@@ -30,21 +30,13 @@
   }
 }
 
+/* [MODIFIED] 移除全域 pre 強制樣式，避免破壞編輯器對齊 */
 textarea, pre, code {
   font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace !important;
   font-variant-ligatures: none;
   tab-size: var(--editor-tab-size) !important;
   -moz-tab-size: var(--editor-tab-size) !important;
   -o-tab-size: var(--editor-tab-size) !important;
-}
-
-/* [NEW] 強制長字串換行 - 解決預覽區文字被截斷問題 */
-/* 適用於錯誤日誌、程式碼區塊等 */
-pre {
-  white-space: pre-wrap !important;       /* 保留空白但允許換行 */
-  word-break: break-all !important;       /* 強制在任何字元間斷行 */
-  overflow-wrap: anywhere !important;     /* 現代瀏覽器屬性 */
-  max-width: 100%;                        /* 確保不超出容器 */
 }
 
 .rainbow-editor-input::selection {

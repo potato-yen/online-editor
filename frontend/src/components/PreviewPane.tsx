@@ -112,7 +112,8 @@ export default function PreviewPane({
                     {errorCopied ? 'Copied!' : 'Copy Log'}
                   </button>
                 </div>
-                <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed opacity-90">
+                {/* [MODIFIED] 這裡加上 break-all 確保錯誤訊息長字串正確換行，但不影響編輯器 */}
+                <pre className="p-4 text-xs font-mono whitespace-pre-wrap break-all leading-relaxed opacity-90">
                   {errorLog}
                 </pre>
               </div>
