@@ -60,11 +60,13 @@ docker run --rm -p 3001:3001 latex-backend
 ```
 
 </details>
-請自行修改 `.env.example` 為 `.env`
+
+請自行修改`.env.example` 為 `.env`
 
 ```bash
 SUPABASE_URL=your-supabase-url-here
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+VITE_BACKEND_URL=http://localhost:3001
 ```
 
 這會在 http://localhost:3001 開一個 `/compile-latex` API。
@@ -146,7 +148,4 @@ brew install basictex
 
 專案目前預設使用 `tectonic`，若要更改，請編輯 `backend/server.js` 中的 `LATEX_CMD` 常數。
 
-## 注意事項
-- 這個後端在現在的型態下**不適合直接丟到公開網路**。  
-  要上線必須把每次編譯放進 sandbox (例如 Docker 容器) 並做資源限制，避免惡意 .tex 造成安全風險或當機。
 
