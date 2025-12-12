@@ -60,7 +60,8 @@ docker run --rm -p 3001:3001 latex-backend
 ```
 
 </details>
-請自行修改 `.env.example` 為 `.env`
+
+請自行修改`.env.example` 為 `.env`
 
 ```bash
 SUPABASE_URL=your-supabase-url-here
