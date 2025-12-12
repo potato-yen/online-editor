@@ -125,11 +125,9 @@ export default function MarkdownToolbar({
 
       {/* --- 第四區：數學 --- */}
       <Dropdown label="Math">
-        <DropdownItem onClick={() => onSimpleInsert('$', '$', 'E=mc^2')}>Inline Math $</DropdownItem>
-        <DropdownItem onClick={() => onSimpleInsert('$$\n', '\n$$', 'E=mc^2')}>Block Math $$</DropdownItem>
         <DropdownItem onClick={onRequestSuperscript}>Superscript x^y</DropdownItem>
         <DropdownItem onClick={onRequestSubscript}>Subscript x_i</DropdownItem>
-        <DropdownItem onClick={() => onMathInsert('\\frac{', '}{denominator}', 'numerator')}>Fraction</DropdownItem>
+        <DropdownItem onClick={() => onMathInsert('\\frac{', '}{b}', 'a')}>Fraction</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\sqrt{', '}', 'x')}>Square Root</DropdownItem>
         <DropdownItem onClick={() => onMathInsert('\\sqrt[', ']{x}', 'n')}>Nth Root</DropdownItem>
       </Dropdown>

@@ -70,7 +70,8 @@ export default function AlignedModal({ isOpen, onClose, onCreate }: Props) {
   }, [isOpen]);
 
   // 插入文字到當前記錄的輸入框
-  const insertText = (prefix: string, suffix: string = '') => {
+  // [MODIFIED] 新增 mode 參數，支援 append 模式
+  const insertText = (prefix: string, suffix: string = '', mode: 'wrap' | 'append' = 'wrap') => {
     const sel = selectionRef.current;
     if (!sel) return; // 如果沒聚焦過任何框，就不動作
 
@@ -89,9 +90,12 @@ export default function AlignedModal({ isOpen, onClose, onCreate }: Props) {
       const selected = text.substring(start, end);
       const after = text.substring(end);
 
-      // 如果有選取文字，通常是把它包起來 (例如分母)
-      // 如果沒選取，就直接插入
-      const newText = before + prefix + selected + suffix + after;
+      let newText = '';
+      if (mode === 'wrap') {
+        newText = before + prefix + selected + suffix + after;
+      } else {
+        newText = before + selected + prefix + suffix + after;
+      }
 
       newLines[lineIndex] = { ...currentLine, [field]: newText };
       return newLines;
@@ -104,14 +108,13 @@ export default function AlignedModal({ isOpen, onClose, onCreate }: Props) {
         const el = document.getElementById(inputId) as HTMLInputElement;
         if (el) {
             el.focus();
-            // 移動游標到插入內容的中間或後面
-            const newCursorPos = start + prefix.length + (suffix ? 0 : 0); 
-            // 若 suffix 為空，代表是取代型符號，游標在後
-            // 若 suffix 有值，代表是包覆型 (如 ^{})，我們希望游標停在 {} 中間方便輸入
-            // 這裡做個簡單判斷：如果是 ^{} 這種，游標停在 } 前面
-            // 如果是有選取文字被包覆，游標停在最尾端
-            
-            // 簡單策略：如果有選取文字，停在最尾；如果沒有，停在 prefix 之後
+            let newCursorPos = 0;
+            if (mode === 'wrap') {
+                newCursorPos = start + prefix.length;
+            } else {
+                const selectedLen = end - start;
+                newCursorPos = start + selectedLen + prefix.length;
+            }
             el.setSelectionRange(newCursorPos, newCursorPos);
         }
     }, 0);
@@ -165,9 +168,9 @@ export default function AlignedModal({ isOpen, onClose, onCreate }: Props) {
         <div className="mb-4 p-2 bg-neutral-900/50 rounded-lg border border-neutral-700 flex flex-wrap gap-2 items-center">
             <span className="text-xs text-neutral-500 mr-2 uppercase tracking-wider font-bold">Quick Insert:</span>
             
-            {/* 使用 onMouseDown PREVENT DEFAULT 來防止按鈕點擊時 input 失去焦點 (雖然我們有 selectionRef 備份，但這樣體驗更好) */}
-            <button type="button" className={toolBtnClass} onMouseDown={e=>e.preventDefault()} onClick={() => insertText('^{', '}')} title="Superscript">x^n</button>
-            <button type="button" className={toolBtnClass} onMouseDown={e=>e.preventDefault()} onClick={() => insertText('_{', '}')} title="Subscript">x_n</button>
+            {/* [MODIFIED] 上標與下標改用 append 模式 */}
+            <button type="button" className={toolBtnClass} onMouseDown={e=>e.preventDefault()} onClick={() => insertText('^{', '}', 'append')} title="Superscript">x^n</button>
+            <button type="button" className={toolBtnClass} onMouseDown={e=>e.preventDefault()} onClick={() => insertText('_{', '}', 'append')} title="Subscript">x_n</button>
             <button type="button" className={toolBtnClass} onMouseDown={e=>e.preventDefault()} onClick={() => insertText('\\frac{', '}{}')} title="Fraction">a/b</button>
             <button type="button" className={toolBtnClass} onMouseDown={e=>e.preventDefault()} onClick={() => insertText('\\sqrt{', '}')} title="Sqrt">√x</button>
             <div className="w-px h-4 bg-neutral-700 mx-1"></div>
