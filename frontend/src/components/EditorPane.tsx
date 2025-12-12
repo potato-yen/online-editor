@@ -36,26 +36,43 @@ const findMatchingBracket = (text: string, cursorPos: number): [number, number] 
     return null;
   };
 
+  // [NEW] 檢查是否為 Task List 的 checkbox [ ] 或 [x]
+  // 這些通常會觸發字型連字 (Ligatures)，如果因為游標靠近而觸發高亮，會將括號拆成不同 span，
+  // 導致連字失效，進而造成 pre (顯示層) 與 textarea (輸入層) 的寬度不一致，讓編輯區跳動。
+  // 解決方案：針對這類 pattern 不進行括號高亮，保持 DOM 結構簡單，確保寬度一致。
+  const isCheckbox = (idx1: number, idx2: number) => {
+      const start = Math.min(idx1, idx2);
+      const end = Math.max(idx1, idx2);
+      // [ ] 長度為 3 (idx 0, 1, 2)
+      // 容許 [ ], [x], [X], [?] 等短內容
+      if (end - start > 2) return false; 
+      
+      const content = text.slice(start, end + 1);
+      return /^\[[\s\dxX\?]?\]$/.test(content);
+  };
+
   let targetIndex = cursorPos;
   let char = text[targetIndex];
   
+  // 1. 檢查游標當前位置
   if (pairs[char]) { 
     const match = scan(targetIndex, char, pairs[char], 1);
-    if (match !== null) return [targetIndex, match];
+    if (match !== null && !isCheckbox(targetIndex, match)) return [targetIndex, match];
   } else if (revPairs[char]) { 
     const match = scan(targetIndex, char, revPairs[char], -1);
-    if (match !== null) return [match, targetIndex];
+    if (match !== null && !isCheckbox(match, targetIndex)) return [match, targetIndex];
   }
 
+  // 2. 檢查游標前一個位置 (讓使用者打完括號後也能看到高亮)
   targetIndex = cursorPos - 1;
   if (isValid(targetIndex)) {
     char = text[targetIndex];
     if (pairs[char]) {
       const match = scan(targetIndex, char, pairs[char], 1);
-      if (match !== null) return [targetIndex, match];
+      if (match !== null && !isCheckbox(targetIndex, match)) return [targetIndex, match];
     } else if (revPairs[char]) {
       const match = scan(targetIndex, char, revPairs[char], -1);
-      if (match !== null) return [match, targetIndex];
+      if (match !== null && !isCheckbox(match, targetIndex)) return [match, targetIndex];
     }
   }
 
@@ -100,6 +117,7 @@ const generateRainbowText = (text: string, highlightIndices: Set<number>) => {
     const nextChar = text[i + 1] || '';
     
     const isHighlighted = highlightIndices.has(i);
+    // [NOTE] 這裡已經移除了 font-bold，避免寬度變化
     const extraClass = isHighlighted ? highlightClass : '';
 
     if (char === '\\') {
@@ -178,7 +196,7 @@ const generateRainbowText = (text: string, highlightIndices: Set<number>) => {
             flush(i);
             const colorClass = colors[mathDepth % colors.length];
             result.push(
-                <span key={i} className={`${colorClass} font-bold ${extraClass}`}>
+                <span key={i} className={`${colorClass} ${extraClass}`}>
                     {char}
                 </span>
             );
@@ -190,7 +208,7 @@ const generateRainbowText = (text: string, highlightIndices: Set<number>) => {
             if (char === '}') mathDepth = Math.max(0, mathDepth - 1);
             const colorClass = colors[mathDepth % colors.length];
             result.push(
-                <span key={i} className={`${colorClass} font-bold ${extraClass}`}>
+                <span key={i} className={`${colorClass} ${extraClass}`}>
                     {char}
                 </span>
             );
@@ -305,7 +323,6 @@ export default function EditorPane({
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        // clientWidth 會扣除卷軸寬度
         setEditorWidth(entry.target.clientWidth);
       }
     });
@@ -377,14 +394,12 @@ export default function EditorPane({
             </div>
           )}
 
-          {/* [FIX] 更新: 移除 w-full，改用 style.width 同步 textarea 的實際寬度 */}
           <pre
             ref={preRef}
             aria-hidden="true"
             className="absolute inset-0 m-0 h-full bg-transparent pointer-events-none scrollbar-none overflow-hidden"
             style={{
               ...commonStyles,
-              // 強制同步寬度：避免 textarea 有卷軸時，pre 沒扣除卷軸寬度導致換行點不同步
               width: editorWidth ? `${editorWidth}px` : '100%',
             }}
           >
@@ -424,7 +439,6 @@ export default function EditorPane({
             aria-hidden="true"
             style={{
               ...commonStyles,
-              // MirrorRef 本來就已經正確處理了寬度，所以行號是對的
               width: editorWidth ? `${editorWidth}px` : '100%',
               position: 'absolute',
               top: 0,

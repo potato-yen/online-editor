@@ -30,10 +30,17 @@
   }
 }
 
-/* [MODIFIED] 移除全域 pre 強制樣式，避免破壞編輯器對齊 */
+/* [MODIFIED] 修正：強制禁用連字與 Contextual Alternates，解決 Task List [ ] 寬度不一致導致的游標亂跳問題 */
 textarea, pre, code {
   font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace !important;
-  font-variant-ligatures: none;
+  
+  /* 禁用標準連字 */
+  font-variant-ligatures: none !important;
+  
+  /* 強制禁用所有特殊字型替換 (calt, liga, clig, rclt) */
+  /* 這對於 JetBrains Mono 等程式碼字型特別重要，避免 [ ] 變成單一符號 */
+  font-feature-settings: "calt" 0, "liga" 0, "clig" 0, "rclt" 0 !important;
+  
   tab-size: var(--editor-tab-size) !important;
   -moz-tab-size: var(--editor-tab-size) !important;
   -o-tab-size: var(--editor-tab-size) !important;
