@@ -83,12 +83,12 @@ export function useEditorActions({
   editorRef,
   onContentChange,
   setText,
-  indentSize = 4,
+  indentSize = 2,
   autoCloseBrackets = true,
 }: UseEditorActionsOptions) {
   const indentCharacters = useMemo(() => {
-    const spaces = typeof indentSize === 'number' ? indentSize : 4
-    const safeSize = Number.isFinite(spaces) && spaces > 0 ? Math.min(spaces, 8) : 4
+    const spaces = typeof indentSize === 'number' ? indentSize : 2
+    const safeSize = Number.isFinite(spaces) && spaces > 0 ? Math.min(spaces, 8) : 2
     return ' '.repeat(safeSize)
   }, [indentSize])
 

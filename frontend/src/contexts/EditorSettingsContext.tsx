@@ -29,9 +29,9 @@ type ProviderProps = {
 }
 
 export function EditorSettingsProvider({ children }: ProviderProps) {
-  const [fontSize, setFontSize] = useState(14)
+  const [fontSize, setFontSize] = useState(16)
   const [wordWrap, setWordWrap] = useState(true)
-  const [indentSize, setIndentSizeState] = useState<2 | 4>(4)
+  const [indentSize, setIndentSizeState] = useState<2 | 4>(2)
   const [autoSaveInterval, setAutoSaveInterval] = useState<number | null>(3000)
   // 預設開啟
   const [autoCloseBrackets, setAutoCloseBrackets] = useState(true)

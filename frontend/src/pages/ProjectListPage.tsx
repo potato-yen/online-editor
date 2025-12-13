@@ -23,7 +23,7 @@ const IconPlus = () => (
 )
 
 type DocType = Mode
-const MAX_DOCS = 10
+const MAX_DOCS = 20
 
 type DocumentRow = {
   id: string
