@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --editor-tab-size: 4;
+    --editor-tab-size: 2;
   }
 
   html {
