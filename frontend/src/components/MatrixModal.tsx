@@ -71,7 +71,8 @@ export default function MatrixModal({ isOpen, onClose, onCreate }: Props) {
   };
 
   // 插入文字到當前記錄的單元格
-  const insertText = (prefix: string, suffix: string = '') => {
+  // [MODIFIED] 新增 mode 參數，支援 append 模式 (用於上標/下標)
+  const insertText = (prefix: string, suffix: string = '', mode: 'wrap' | 'append' = 'wrap') => {
     const sel = selectionRef.current;
     if (!sel) return;
 
@@ -88,7 +89,14 @@ export default function MatrixModal({ isOpen, onClose, onCreate }: Props) {
       const selected = text.substring(start, end);
       const after = text.substring(end);
 
-      const newText = before + prefix + selected + suffix + after;
+      let newText = '';
+      if (mode === 'wrap') {
+        newText = before + prefix + selected + suffix + after;
+      } else {
+        // append 模式：將選取文字作為底數，插入內容接在後面
+        newText = before + selected + prefix + suffix + after;
+      }
+      
       newData[row][col] = newText;
       return newData;
     });
@@ -99,7 +107,15 @@ export default function MatrixModal({ isOpen, onClose, onCreate }: Props) {
         const el = document.getElementById(inputId) as HTMLInputElement;
         if (el) {
             el.focus();
-            const newCursorPos = start + prefix.length + (suffix ? 0 : 0);
+            let newCursorPos = 0;
+            if (mode === 'wrap') {
+                // wrap: 游標停在 prefix 後面 (內容開頭)
+                newCursorPos = start + prefix.length;
+            } else {
+                // append: 游標停在 prefix 後面 (例如 ^{ 之後)
+                const selectedLen = end - start;
+                newCursorPos = start + selectedLen + prefix.length;
+            }
             el.setSelectionRange(newCursorPos, newCursorPos);
         }
     }, 0);
@@ -209,8 +225,9 @@ export default function MatrixModal({ isOpen, onClose, onCreate }: Props) {
           <div className="mb-4 p-2 bg-neutral-900/50 rounded-lg border border-neutral-700 flex flex-wrap gap-2 items-center">
             <span className="text-xs text-neutral-500 mr-2 uppercase tracking-wider font-bold">Quick Insert:</span>
             
-            <button type="button" className={toolBtnClass} onMouseDown={e=>e.preventDefault()} onClick={() => insertText('^{', '}')} title="Superscript">x^n</button>
-            <button type="button" className={toolBtnClass} onMouseDown={e=>e.preventDefault()} onClick={() => insertText('_{', '}')} title="Subscript">x_n</button>
+            {/* [MODIFIED] 上標與下標改用 append 模式，實現反白文字當底數 */}
+            <button type="button" className={toolBtnClass} onMouseDown={e=>e.preventDefault()} onClick={() => insertText('^{', '}', 'append')} title="Superscript">x^n</button>
+            <button type="button" className={toolBtnClass} onMouseDown={e=>e.preventDefault()} onClick={() => insertText('_{', '}', 'append')} title="Subscript">x_n</button>
             <button type="button" className={toolBtnClass} onMouseDown={e=>e.preventDefault()} onClick={() => insertText('\\frac{', '}{}')} title="Fraction">a/b</button>
             <button type="button" className={toolBtnClass} onMouseDown={e=>e.preventDefault()} onClick={() => insertText('\\sqrt{', '}')} title="Sqrt">√x</button>
             <div className="w-px h-4 bg-neutral-700 mx-1"></div>

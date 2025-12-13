@@ -9,6 +9,13 @@ type UseEditorModalsProps = {
   mode: Mode
 }
 
+// [FIX] 定義 Aligned 的資料結構
+type AlignedLine = {
+  left: string;
+  symbol: string;
+  right: string;
+};
+
 export function useEditorModals({ 
   editorRef, 
   handleSimpleInsert, 
@@ -208,10 +215,20 @@ export function useEditorModals({
     setIsMatrixModalOpen(false)
   }, [handleMathInsert])
 
-  // 5. Aligned Equations
-  const handleCreateAligned = useCallback((lines: string[]) => {
+  // 5. Aligned Equations (FIXED)
+  const handleCreateAligned = useCallback((lines: AlignedLine[]) => { // 使用正確的物件陣列型別
     let latex = '\\begin{aligned}\n'
-    latex += lines.join(' \\\\\n')
+    
+    // 修正：正確解析物件，並組合成 LaTeX 的對齊格式
+    // 格式：Left &Symbol Right
+    const formattedLines = lines.map(line => {
+      const left = line.left ? `${line.left} ` : '';
+      const symbol = line.symbol ? `&${line.symbol} ` : '& ';
+      const right = line.right || '';
+      return `${left}${symbol}${right}`;
+    });
+
+    latex += formattedLines.join(' \\\\\n')
     latex += '\n\\end{aligned}'
     
     // Aligned environment needs amsmath package
@@ -271,7 +288,7 @@ export function useEditorModals({
     onCreateSuperscript: handleCreateSuperscript,
     onCreateSubscript: handleCreateSubscript,
     onCreateMatrix: handleCreateMatrix,
-    onCreateAligned: handleCreateAligned,
+    onCreateAligned: handleCreateAligned, // 這裡這裡，現在傳入正確的函式了
     onCreateLink: handleCreateLink,
     onCreateImage: handleCreateImage,
   }
