@@ -9,32 +9,32 @@ RUN apt-get update && apt-get install -y \
     fontconfig \
     && rm -rf /var/lib/apt/lists/*
 
-# Create an unprivileged user for running tectonic
+# 2. 建立 latex-user 並給予家目錄 (重要！)
+# -m: 建立家目錄 /home/latex-user
 RUN groupadd -r latex-user \
-    && useradd -r -g latex-user latex-user
+    && useradd -r -m -g latex-user latex-user
 
-# 2. 下載並安裝 Tectonic
-RUN curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh \
+# 3. 下載並安裝 Tectonic
+RUN curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | \
+    sh \
     && mv tectonic /usr/local/bin/tectonic
 
-# 3. 顯示版本確保安裝成功
-RUN tectonic --version
-
-# =======================================================
-# 4. Tectonic 暖身 (Pre-cache) [最終修正版]
-# =======================================================
-# 1. 使用 printf 避免特殊字元問題
-# 2. 使用 rm -f 避免因檔案不存在而報錯 (Tectonic 預設不留 log)
+# 4. Tectonic 暖身 (Pre-cache) - 先用 Root 跑一次
 RUN printf '\\documentclass{article}\\begin{document}Warmup\\end{document}' > warmup.tex \
     && tectonic warmup.tex \
     && rm -f warmup.tex warmup.pdf warmup.log
 
-# =======================================================
+# 5. [關鍵修復] 將 Root 的快取移交給 latex-user
+# Tectonic 預設快取在 ~/.cache/Tectonic，我們把它複製到 latex-user 的家並給予權限
+RUN mkdir -p /home/latex-user/.cache \
+    && cp -r /root/.cache/Tectonic /home/latex-user/.cache/Tectonic \
+    && chown -R latex-user:latex-user /home/latex-user
 
-# 5. 繼續標準的 Node.js 專案建置
+# 6. 繼續標準的 Node.js 專案建置
 COPY package.json package-lock.json ./
 RUN npm install
 
+# 確保是單行指令
 COPY . .
 
 EXPOSE 3001
