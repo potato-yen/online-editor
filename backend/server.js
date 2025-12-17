@@ -2,18 +2,18 @@
  * Minimal LaTeX compile server.
  *
  * Endpoint:
- *   POST /compile-latex
- *   body: { "source": "<full .tex source>" }
+ * POST /compile-latex
+ * body: { "source": "<full .tex source>" }
  *
  * Response:
- *   - success: { success: true, pdfBase64: "<base64 PDF buffer>" }
- *   - failure: { success: false, errorLog: "...", errorLines: [23, 45, ...] }
+ * - success: { success: true, pdfBase64: "<base64 PDF buffer>" }
+ * - failure: { success: false, errorLog: "...", errorLines: [23, 45, ...] }
  *
  * IMPORTANT:
  * - This version runs a LaTeX engine directly on the host machine.
  * - This is OK for local / personal use.
  * - Do NOT expose this publicly without sandboxing (Docker, no network,
- *   resource limits, etc.) because arbitrary LaTeX can be abused.
+ * resource limits, etc.) because arbitrary LaTeX can be abused.
  */
 
 const express = require('express');
@@ -119,14 +119,20 @@ function runLatexOnce(workDir, timeoutMs = 8000) {
       LATEX_ARGS,
       {
         cwd: workDir,
-        timeout: timeoutMs, // ms
+        timeout: timeoutMs,
         uid: latexUser.uid,
         gid: latexUser.gid,
-        env: {},
+        // [關鍵修復]：
+        // 1. HOME: 讓 Tectonic 找到我們在 Dockerfile 準備好的 /home/latex-user/.cache
+        // 2. PATH: 保持基本指令路徑
+        // 注意：這裡依然沒有傳入 process.env (所以沒有 Supabase Key)
+        env: { 
+          HOME: '/home/latex-user',
+          PATH: process.env.PATH 
+        },
       },
       (error, stdout, stderr) => {
         if (error) {
-          // 回傳詳細資訊讓呼叫端自行組裝錯誤訊息
           reject({ error, stdout, stderr });
         } else {
           resolve({ stdout, stderr });
@@ -190,6 +196,30 @@ function extractLatexErrorLines(info) {
 }
 
 // ---------------------------
+// [新增] 安全性檢查：簡單過濾惡意路徑
+// ---------------------------
+function isUnsafeLatex(source) {
+  // 1. 移除註解 (避免誤判註解裡的內容)
+  const noComments = source.replace(/%.*$/gm, '');
+
+  // 2. 定義危險關鍵字
+  // 我們要擋的是：
+  // - \input{/etc/passwd}  (絕對路徑)
+  // - \input{../secret}    (上層目錄)
+  // - \include, \verbatiminput, \lstinputlisting 等等
+  
+  // 正規表達式說明：
+  // \\(input|include|...): 匹配 LaTeX 指令
+  // \s*: 允許指令後有空白
+  // \{: 匹配左大括號
+  // \s*: 允許括號內有空白
+  // (\/|\.\.): 核心檢查點 -> 匹配 "/" (絕對路徑) 或 ".." (上層路徑)
+  const dangerousPattern = /\\(input|include|verbatiminput|lstinputlisting|includegraphics|openin|openout)(\[[^\]]*\])?\s*\{\s*(\/|\.\.)/i;
+
+  return dangerousPattern.test(noComments);
+}
+
+// ---------------------------
 // 建立 Express app
 // ---------------------------
 const app = express();
@@ -221,6 +251,19 @@ app.post('/compile-latex', async (req, res) => {
     if (typeof source !== 'string' || !source.trim()) {
       return res.status(400).json({ error: 'Missing LaTeX source' });
     }
+
+    // ---------------------------------------------------------
+    // [新增] 安全性攔截：如果發現惡意路徑，直接拒絕執行
+    // ---------------------------------------------------------
+    if (isUnsafeLatex(source)) {
+      console.warn(`[Security Block] Malicious LaTeX pattern detected from IP: ${req.ip}`);
+      return res.status(200).json({ 
+        success: false, 
+        errorLog: 'Security Violation: Access to absolute paths (/etc/...) or parent directories (../) is forbidden.',
+        errorLines: []
+      });
+    }
+    // ---------------------------------------------------------
 
     // ---------------------------
     // 1. 建立此次編譯的臨時資料夾
