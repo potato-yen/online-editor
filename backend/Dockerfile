@@ -9,6 +9,10 @@ RUN apt-get update && apt-get install -y \
     fontconfig \
     && rm -rf /var/lib/apt/lists/*
 
+# Create an unprivileged user for running tectonic
+RUN groupadd -r latex-user \
+    && useradd -r -g latex-user latex-user
+
 # 2. 下載並安裝 Tectonic
 RUN curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh \
     && mv tectonic /usr/local/bin/tectonic

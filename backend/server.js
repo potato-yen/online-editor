@@ -22,7 +22,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { randomUUID } = require('crypto');
-const { execFile } = require('child_process');
+const { execFile, execSync } = require('child_process');
 
 const dotenvPath = path.join(__dirname, '.env')
 if (fs.existsSync(dotenvPath)) {
@@ -57,7 +57,10 @@ const accountDeletionEnabled = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
 //
 
 // ---- 用 tectonic 的版本 ----
-const LATEX_CMD = 'tectonic';
+const LATEX_CMD = execSync('command -v tectonic', { encoding: 'utf8' }).trim();
+if (!LATEX_CMD) {
+  throw new Error('tectonic binary not found in PATH');
+}
 const LATEX_ARGS = [
   'main.tex',
   '--outfmt',
@@ -82,6 +85,33 @@ const LATEX_ARGS = [
 //   在 workDir 執行 LATEX_CMD LATEX_ARGS
 //   timeout 超過就丟錯
 //
+const LATEX_SANDBOX_USER = 'latex-user';
+const latexUser = {
+  uid: null,
+  gid: null,
+};
+
+function ensureLatexUserIds() {
+  if (latexUser.uid !== null && latexUser.gid !== null) {
+    return;
+  }
+
+  const uidStr = execSync(`id -u ${LATEX_SANDBOX_USER}`, { encoding: 'utf8' }).trim();
+  const gidStr = execSync(`id -g ${LATEX_SANDBOX_USER}`, { encoding: 'utf8' }).trim();
+
+  const uid = Number(uidStr);
+  const gid = Number(gidStr);
+
+  if (Number.isNaN(uid) || Number.isNaN(gid)) {
+    throw new Error(`Failed to resolve uid/gid for ${LATEX_SANDBOX_USER}`);
+  }
+
+  latexUser.uid = uid;
+  latexUser.gid = gid;
+}
+
+ensureLatexUserIds();
+
 function runLatexOnce(workDir, timeoutMs = 8000) {
   return new Promise((resolve, reject) => {
     execFile(
@@ -90,6 +120,9 @@ function runLatexOnce(workDir, timeoutMs = 8000) {
       {
         cwd: workDir,
         timeout: timeoutMs, // ms
+        uid: latexUser.uid,
+        gid: latexUser.gid,
+        env: {},
       },
       (error, stdout, stderr) => {
         if (error) {
@@ -199,6 +232,7 @@ app.post('/compile-latex', async (req, res) => {
     const jobId = randomUUID();
     const workDir = path.join(baseTmp, jobId);
     fs.mkdirSync(workDir, { recursive: true });
+    fs.chownSync(workDir, latexUser.uid, latexUser.gid);
 
     // 把前端送來的 LaTeX 內容寫成 main.tex
     const texPath = path.join(workDir, 'main.tex');
