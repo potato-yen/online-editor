@@ -237,6 +237,7 @@ app.post('/compile-latex', async (req, res) => {
     // 把前端送來的 LaTeX 內容寫成 main.tex
     const texPath = path.join(workDir, 'main.tex');
     fs.writeFileSync(texPath, source, 'utf8');
+    fs.chownSync(texPath, latexUser.uid, latexUser.gid);
 
     // ---------------------------
     // 2. 執行 LaTeX 編譯器
