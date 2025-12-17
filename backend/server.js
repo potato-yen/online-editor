@@ -60,6 +60,7 @@ const accountDeletionEnabled = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
 const LATEX_CMD = 'tectonic';
 const LATEX_ARGS = [
   'main.tex',
+  '--untrusted',
   '--outfmt',
   'pdf'
 ];
